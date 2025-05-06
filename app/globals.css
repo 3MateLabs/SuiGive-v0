@@ -1,0 +1,397 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222 47% 11%;
+
+    --sui-blue: 206 89% 85%;
+    --sui-navy: 222 47% 11%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+
+    --primary: 222 47% 11%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 206 89% 85%;
+    --secondary-foreground: 222 47% 11%;
+
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+
+    --accent: 206 89% 85%;
+    --accent-foreground: 222 47% 11%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 222 47% 11%;
+
+    --radius: 0.5rem;
+
+    --neon-blue: 195 100% 50%;
+    --neon-green: 142 100% 50%;
+    --neon-purple: 280 100% 60%;
+  }
+
+  .dark {
+    --background: 222 47% 11%;
+    --foreground: 0 0% 98%;
+
+    --card: 222 47% 11%;
+    --card-foreground: 0 0% 98%;
+
+    --popover: 222 47% 11%;
+    --popover-foreground: 0 0% 98%;
+
+    --primary: 0 0% 98%;
+    --primary-foreground: 222 47% 11%;
+
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 0 0% 98%;
+
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 0 0% 98%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 212.7 26.8% 83.9%;
+  }
+}
+
+@font-face {
+  font-family: 'TWKEverett';
+  src: url('/fonts/TWKEverett-Regular.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'TWKEverett';
+  src: url('/fonts/TWKEverett-Bold.otf') format('opentype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'TWKEverett';
+  src: url('/fonts/TWKEverett-Thin.otf') format('opentype');
+  font-weight: 100;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'TWKEverett';
+  src: url('/fonts/TWKEverett-Black.otf') format('opentype');
+  font-weight: 900;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'TWKEverett';
+  src: url('/fonts/TWKEverett-BlackItalic.otf') format('opentype');
+  font-weight: 900;
+  font-style: italic;
+  font-display: swap;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'TWKEverett', system-ui, sans-serif;
+  }
+  p,
+  span,
+  div,
+  li,
+  a,
+  input,
+  textarea,
+  button {
+    font-family: 'TWKEverett', system-ui, sans-serif;
+  }
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6,
+  .heading {
+    font-family: 'TWKEverett', system-ui, sans-serif;
+    font-weight: 700;
+  }
+  button,
+  .button,
+  a.button,
+  .btn {
+    font-family: var(--font-inter), system-ui, sans-serif;
+  }
+  .font-inter {
+    font-family: var(--font-inter), system-ui, sans-serif;
+  }
+  .font-space {
+    font-family: var(--font-space-grotesk), sans-serif;
+  }
+  .text-gray-500, .subtext, .description, .helper-text, small {
+    font-family: 'TWKEverett', system-ui, sans-serif;
+    font-weight: 100;
+  }
+}
+
+.sui-blue-bg {
+  background-color: hsl(206, 89%, 85%);
+}
+
+.sui-navy-bg {
+  background-color: hsl(222, 47%, 11%);
+}
+
+.sui-navy-text {
+  color: hsl(222, 47%, 11%);
+}
+
+.progress-bar {
+  height: 8px;
+  border-radius: 4px;
+  background: #e0e0e0;
+  overflow: hidden;
+  position: relative;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  background: #4ade80;
+  transition: width 0.5s ease-out;
+}
+
+.card-shadow {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.floating-card {
+  animation: float 6s ease-in-out infinite;
+  box-shadow: 0 5px 15px 0 rgba(0, 0, 0, 0.1);
+}
+
+.floating-card:nth-child(2) {
+  animation-delay: 1s;
+}
+
+.floating-card:nth-child(3) {
+  animation-delay: 2s;
+}
+
+.floating-card:nth-child(4) {
+  animation-delay: 3s;
+}
+
+@keyframes float {
+  0% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-10px) rotate(2deg);
+  }
+  100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+}
+
+/* Neon shadow effect for the Explore Crowdfunding button */
+.shadow-neon-button {
+  position: relative;
+  z-index: 1;
+  border: none;
+  box-shadow: 0 4px 20px rgba(0, 195, 255, 0.5), 0 0 15px rgba(0, 195, 255, 0.3);
+  transition: all 0.3s ease;
+}
+
+.shadow-neon-button:hover {
+  box-shadow: 0 6px 25px rgba(0, 195, 255, 0.6), 0 0 20px rgba(0, 195, 255, 0.4);
+  transform: translateY(-2px);
+}
+
+@keyframes flowing-neon {
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 300% 50%;
+  }
+}
+
+/* Enhanced animations */
+.fade-in {
+  animation: fade-in 1s ease-out forwards;
+  opacity: 0;
+}
+
+.fade-up {
+  animation: fade-up 0.8s ease-out forwards;
+  opacity: 0;
+}
+
+.fade-right {
+  animation: fade-right 0.8s ease-out forwards;
+  opacity: 0;
+}
+
+.fade-left {
+  animation: fade-left 0.8s ease-out forwards;
+  opacity: 0;
+}
+
+.panel-slide-in {
+  animation: panel-slide-in 0.8s ease-out forwards;
+  opacity: 0;
+  transform: translateY(30px);
+}
+
+@keyframes fade-in {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes fade-up {
+  0% {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fade-right {
+  0% {
+    opacity: 0;
+    transform: translateX(-30px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes fade-left {
+  0% {
+    opacity: 0;
+    transform: translateX(30px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes panel-slide-in {
+  0% {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.arrow-bounce {
+  animation: arrow-bounce 1.5s infinite;
+}
+
+@keyframes arrow-bounce {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  50% {
+    transform: translateX(5px);
+  }
+}
+
+.pulse {
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.05);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* Page transition effects */
+.page-transition {
+  position: relative;
+  display: inline-block;
+  transition: transform 0.3s ease;
+}
+
+.page-transition:hover {
+  transform: translateY(-2px);
+}
+
+.page-transition::after {
+  content: "";
+  position: absolute;
+  width: 100%;
+  transform: scaleX(0);
+  height: 2px;
+  bottom: -4px;
+  left: 0;
+  background: linear-gradient(90deg, hsl(var(--neon-blue)), hsl(var(--neon-purple)));
+  transform-origin: bottom right;
+  transition: transform 0.3s ease-out;
+}
+
+.page-transition:hover::after {
+  transform: scaleX(1);
+  transform-origin: bottom left;
+}
+
+/* Page transition animation */
+@keyframes page-fade-in {
+  0% {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.page-enter {
+  animation: page-fade-in 0.5s ease forwards;
+}

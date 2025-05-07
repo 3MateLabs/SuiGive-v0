@@ -4,12 +4,15 @@ import { useState, useEffect } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { DollarSign, Heart, Share2 } from "lucide-react"
+import { DollarSign, Heart, Share2, AlertCircle } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
 import Navbar from "@/components/navbar"
 import Footer from "@/components/footer"
-import { projects } from "@/data/projects"
+import { useSuiCampaigns } from "@/hooks/useSuiCampaigns"
+import { Campaign } from "@/lib/sui-campaigns"
+import { toast } from "react-hot-toast"
+import { formatDistanceToNow } from "date-fns"
 
 const similarProjects = [
   {
@@ -65,37 +68,142 @@ const similarProjects = [
 export default function DonatePage() {
   const router = useRouter()
   const { id } = useParams()
-  const [project, setProject] = useState<any>(null)
+  const [campaign, setCampaign] = useState<Campaign | null>(null)
   const [donationAmount, setDonationAmount] = useState("50")
   const [isAnonymous, setIsAnonymous] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [pageLoaded, setPageLoaded] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  // Get the campaigns hook
+  const { getCampaignDetails, donate, connected, wallet } = useSuiCampaigns()
 
   useEffect(() => {
-    // Find the project based on the ID
-    const projectId = Number(id)
-    const foundProject = projects.find((p) => p.id === projectId)
-    setProject(foundProject)
-
+    // Fetch the campaign details from the blockchain
+    const fetchCampaign = async () => {
+      try {
+        if (typeof id !== 'string') {
+          throw new Error('Invalid campaign ID')
+        }
+        
+        const campaignDetails = await getCampaignDetails(id)
+        if (!campaignDetails) {
+          throw new Error('Campaign not found')
+        }
+        
+        setCampaign(campaignDetails)
+        setPageLoaded(true)
+      } catch (err: any) {
+        console.error('Error fetching campaign:', err)
+        setError(err.message || 'Failed to load campaign')
+        setPageLoaded(true)
+      }
+    }
     
-    setPageLoaded(true)
-
-    
+    fetchCampaign()
     window.scrollTo(0, 0)
-  }, [id])
+  }, [id, getCampaignDetails])
 
-  const handleDonate = () => {
-    setIsSubmitting(true)
-
+  // Calculate progress percentage
+  const calculateProgress = () => {
+    if (!campaign) return 0
     
-    setTimeout(() => {
-      setIsSubmitting(false)
-      alert(`Thank you for your donation of ${donationAmount} SUI to ${project?.title}!`)
-      router.push("/")
-    }, 1500)
+    try {
+      const currentAmount = BigInt(campaign.currentAmount)
+      const goalAmount = BigInt(campaign.goalAmount)
+      
+      if (goalAmount === BigInt(0)) return 0
+      
+      // Calculate percentage and convert to number (limited to 100%)
+      const percentage = Number((currentAmount * BigInt(100)) / goalAmount)
+      return Math.min(percentage, 100)
+    } catch (error) {
+      console.error('Error calculating progress:', error)
+      return 0
+    }
   }
 
-  if (!project) {
+  // Format the timestamp to "X days ago"
+  const formatTimeAgo = (timestamp: string) => {
+    try {
+      const date = new Date(Number(timestamp) * 1000)
+      return formatDistanceToNow(date, { addSuffix: true })
+    } catch (error) {
+      return 'Recently'
+    }
+  }
+
+  // Convert SUI amount to MIST (1 SUI = 10^9 MIST)
+  const suiToMist = (amount: string): number => {
+    try {
+      return Math.floor(parseFloat(amount) * 1_000_000_000)
+    } catch (error) {
+      return 0
+    }
+  }
+
+  const handleDonate = async () => {
+    if (!connected) {
+      toast.error('Please connect your wallet first')
+      return
+    }
+    
+    if (!campaign) {
+      toast.error('Campaign not found')
+      return
+    }
+    
+    if (!donationAmount || parseFloat(donationAmount) <= 0) {
+      toast.error('Please enter a valid donation amount')
+      return
+    }
+    
+    setIsSubmitting(true)
+    toast.loading('Processing your donation...', { id: 'donation' })
+    
+    try {
+      // Convert SUI to MIST for the blockchain
+      const amountInMist = suiToMist(donationAmount)
+      
+      // Call the donate function from the hook
+      const result = await donate(campaign.id, amountInMist, isAnonymous)
+      
+      toast.success(`Thank you for your donation of ${donationAmount} SUI!`, { id: 'donation' })
+      
+      // Redirect to home page after successful donation
+      setTimeout(() => {
+        router.push('/')
+      }, 2000)
+    } catch (err: any) {
+      console.error('Error donating:', err)
+      toast.error(err.message || 'Failed to process donation', { id: 'donation' })
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  if (!pageLoaded) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-sui-navy"></div>
+      </div>
+    )
+  }
+  
+  if (error) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center p-4">
+        <AlertCircle className="h-12 w-12 text-red-500 mb-4" />
+        <h2 className="text-2xl font-bold mb-2">Error Loading Campaign</h2>
+        <p className="text-gray-600 mb-4">{error}</p>
+        <Button onClick={() => router.push('/')} className="bg-sui-navy text-white">
+          Return to Home
+        </Button>
+      </div>
+    )
+  }
+  
+  if (!campaign) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-sui-navy"></div>
@@ -120,41 +228,49 @@ export default function DonatePage() {
           <div className="md:col-span-3 space-y-6">
             <div className="bg-white rounded-xl overflow-hidden shadow-sm">
               <div className="relative h-64 w-full">
-                <Image src={project.image || "/placeholder.svg"} alt={project.title} fill className="object-cover" />
+                <Image src={campaign.imageUrl || "/placeholder.svg"} alt={campaign.name} fill className="object-cover" />
                 <div className="absolute top-4 left-4 bg-white rounded-full p-3">
-                  <span className="text-2xl">{project.emoji}</span>
+                  <span className="text-2xl">🎯</span>
                 </div>
               </div>
 
               <div className="p-6">
                 <div className="flex items-center text-sm text-gray-500 mb-2">
-                  <span className="bg-gray-100 rounded-full px-3 py-1">{project.category}</span>
+                  <span className="bg-gray-100 rounded-full px-3 py-1">{campaign.category}</span>
                   <span className="mx-2">•</span>
-                  <span>{project.daysLeft} days left</span>
+                  <span>{formatTimeAgo(campaign.createdAt)}</span>
                 </div>
 
-                <h1 className="text-2xl md:text-3xl font-bold mb-4 sui-navy-text">{project.title}</h1>
+                <h1 className="text-2xl md:text-3xl font-bold mb-4 sui-navy-text">{campaign.name}</h1>
 
-                <p className="text-gray-700 mb-6">{project.description}</p>
+                <p className="text-gray-700 mb-6">{campaign.description}</p>
 
                 <div className="mb-6">
-                  <div className="flex justify-between text-sm mb-2">
-                    <span className="font-medium">{project.progress}% Funded</span>
-                    <span>
-                      {project.raised} / {project.goal} SUI
-                    </span>
-                  </div>
-                  <div className="progress-bar">
-                    <div className="progress-bar-fill" style={{ width: `${project.progress}%` }}></div>
-                  </div>
+                  {(() => {
+                    const progress = calculateProgress();
+                    return (
+                      <>
+                        <div className="flex justify-between text-sm mb-1">
+                          <span className="font-medium">{progress}% Funded</span>
+                          <span>Goal: {Number(campaign.goalAmount) / 1_000_000_000} SUI</span>
+                        </div>
+                        <div className="w-full h-3 bg-gray-200 rounded-full overflow-hidden">
+                          <div
+                            className={`h-full ${progress > 66 ? "bg-green-500" : progress > 33 ? "bg-yellow-400" : "bg-red-500"}`}
+                            style={{ width: `${progress}%` }}
+                          ></div>
+                        </div>
+                      </>
+                    );
+                  })()}
                 </div>
 
                 <div className="flex items-center justify-between text-sm text-gray-600 pt-4 border-t">
                   <div>
-                    <span className="font-medium">{project.backers}</span> backers
+                    <span className="font-medium">-</span> backers
                   </div>
                   <div>
-                    Organized by <span className="font-medium">{project.organizer}</span>
+                    Organized by <span className="font-medium">{campaign.creator.substring(0, 10)}...</span>
                   </div>
                 </div>
               </div>

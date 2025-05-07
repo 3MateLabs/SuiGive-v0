@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { ConnectButton, useWalletKit } from "@mysten/wallet-kit"
+import { ConnectButton, useCurrentWallet } from "@mysten/dapp-kit"
 
 const regions = [
   { code: "CN", name: "China", flag: "🇨🇳" },
@@ -32,7 +32,7 @@ export default function SetupPage() {
   const [reasons, setReasons] = useState<string[]>([])
   const [wallet, setWallet] = useState("")
   const router = useRouter()
-  const { currentAccount, isConnected } = useWalletKit()
+  const { currentWallet } = useCurrentWallet()
 
   // For image preview
   const imageUrl = image ? URL.createObjectURL(image) : null
@@ -44,14 +44,15 @@ export default function SetupPage() {
   }
 
   useEffect(() => {
-    if (isConnected && currentAccount?.address) {
-      setWallet(currentAccount.address)
+    if (currentWallet && currentWallet.accounts && currentWallet.accounts.length > 0) {
+      const walletAddress = currentWallet.accounts[0].address
+      setWallet(walletAddress)
       if (typeof window !== "undefined") {
-        localStorage.setItem("suiWallet", currentAccount.address)
+        localStorage.setItem("suiWallet", walletAddress)
       }
       router.push("/dashboard")
     }
-  }, [isConnected, currentAccount, router])
+  }, [currentWallet, router])
 
   return (
     <div className="min-h-screen w-full flex flex-row">
@@ -232,8 +233,8 @@ export default function SetupPage() {
               <h2 className="text-2xl font-bold mb-4">Connect your Sui Wallet</h2>
               <p className="text-gray-500 mb-6">Connect your Sui wallet to complete your setup and access your dashboard.</p>
               <ConnectButton />
-              {isConnected && currentAccount?.address && (
-                <div className="mt-4 text-green-600 font-medium">Wallet connected: {currentAccount.address}</div>
+              {currentWallet && currentWallet.accounts && currentWallet.accounts.length > 0 && (
+                <div className="mt-4 text-green-600 font-medium">Wallet connected: {currentWallet.accounts[0].address}</div>
               )}
             </div>
           )}

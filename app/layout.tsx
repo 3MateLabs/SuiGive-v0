@@ -3,7 +3,8 @@ import type { Metadata } from "next"
 import { Inter } from "next/font/google"
 import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
-import WalletProviderClient from "@/components/WalletProviderClient"
+import SuiProviders from "@/components/SuiProviders"
+import { Toaster } from "react-hot-toast"
 
 const inter = Inter({
   subsets: ["latin"],
@@ -27,14 +28,12 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className={`${inter.variable} font-sans`}>
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
-          <WalletProviderClient>
+          <SuiProviders>
+            <Toaster position="top-center" />
             {children}
-          </WalletProviderClient>
+          </SuiProviders>
         </ThemeProvider>
       </body>
     </html>
   )
 }
-
-
-import './globals.css'

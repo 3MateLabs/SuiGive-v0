@@ -1,6 +1,6 @@
 "use client";
-import { WalletKitProvider } from "@mysten/wallet-kit";
+import { WalletProvider } from "@mysten/dapp-kit";
 
 export default function WalletProviderClient({ children }: { children: React.ReactNode }) {
-  return <WalletKitProvider>{children}</WalletKitProvider>;
-} 
+  return <WalletProvider>{children}</WalletProvider>;
+}

@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, Suspense } from "react"
 import { Heart, BarChart2, Settings, Wallet as WalletIcon, Activity, Layers, DollarSign, Edit2, Share2, CheckCircle, Clock } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
@@ -22,20 +22,58 @@ const userMock = {
   avatar: "/avatar1.jpg",
 }
 
-export default function DashboardPage() {
+// Component to handle search params logic
+function TabInitializer() {
   const searchParams = useSearchParams();
-  const router = useRouter();
-  let initialTab = "Dashboard";
-  if (searchParams) {
-    const tab = searchParams.get("tab");
-    if (tab) {
-      const tabFormatted = tab.charAt(0).toUpperCase() + tab.slice(1).toLowerCase();
-      if (["Dashboard", "My Projects", "Donations", "Activity", "Analytics", "Wallet", "Settings"].includes(tabFormatted)) {
-        initialTab = tabFormatted;
+  const [initialTab, setInitialTab] = useState("Dashboard");
+  
+  useEffect(() => {
+    if (searchParams) {
+      const tab = searchParams.get("tab");
+      if (tab) {
+        const tabFormatted = tab.charAt(0).toUpperCase() + tab.slice(1).toLowerCase();
+        if (["Dashboard", "My Projects", "Donations", "Activity", "Analytics", "Wallet", "Settings"].includes(tabFormatted)) {
+          setInitialTab(tabFormatted);
+        }
       }
     }
-  }
-  const [activeTab, setActiveTab] = useState(initialTab)
+  }, [searchParams]);
+  
+  return initialTab;
+}
+
+export default function DashboardPage() {
+  const router = useRouter();
+  const [activeTab, setActiveTab] = useState("Dashboard")
+  
+  // Wrap the search params logic in Suspense
+  useEffect(() => {
+    // Initialize tab from search params
+    const initializeTab = async () => {
+      const initialTab = await new Promise<string>(resolve => {
+        // Small timeout to ensure client-side rendering is complete
+        setTimeout(() => {
+          try {
+            const params = new URLSearchParams(window.location.search);
+            const tab = params.get("tab");
+            if (tab) {
+              const tabFormatted = tab.charAt(0).toUpperCase() + tab.slice(1).toLowerCase();
+              if (["Dashboard", "My Projects", "Donations", "Activity", "Analytics", "Wallet", "Settings"].includes(tabFormatted)) {
+                resolve(tabFormatted);
+                return;
+              }
+            }
+            resolve("Dashboard");
+          } catch (e) {
+            resolve("Dashboard");
+          }
+        }, 0);
+      });
+      setActiveTab(initialTab);
+    };
+    
+    initializeTab();
+  }, []);
   const [wallet, setWallet] = useState("")
   const [projectTab, setProjectTab] = useState('Active Projects')
   const [walletDropdown, setWalletDropdown] = useState(false)
@@ -149,7 +187,7 @@ export default function DashboardPage() {
                 className="flex items-center gap-2 px-4 py-2 rounded bg-[#1a2a3a] text-white font-mono text-sm hover:bg-[#22334a] border border-[#22334a] focus:outline-none"
                 onClick={() => setWalletDropdown((open) => !open)}
               >
-                <span className="inline-block w-5 h-5 rounded-full bg-[#2d3a4d] flex items-center justify-center">
+                <span className="w-5 h-5 rounded-full bg-[#2d3a4d] flex items-center justify-center">
                   <svg width="18" height="18" fill="none" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="#fff"/><path d="M7 12h10M7 16h10M7 8h10" stroke="#0a2233" strokeWidth="2" strokeLinecap="round"/></svg>
                 </span>
                 <span>{shortAddress(wallet)}</span>
@@ -373,7 +411,7 @@ export default function DashboardPage() {
                 <div>
                   <div className="text-lg font-bold">Connected Wallet</div>
                   <div className="text-sm text-gray-200">Slush Wallet</div>
-                  <div className="mt-2 bg-[#112a3c] px-3 py-2 rounded font-mono text-xs inline-block">{wallet || 'Not connected'}</div>
+                  <div className="mt-2 bg-[#112a3c] px-3 py-2 rounded font-mono text-xs block">{wallet || 'Not connected'}</div>
                 </div>
                 <div className="text-right">
                   <div className="text-lg font-bold">SUI Balance</div>

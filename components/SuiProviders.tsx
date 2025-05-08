@@ -9,16 +9,16 @@ import { ReactNode } from 'react';
 import '@mysten/dapp-kit/dist/index.css';
 
 // Config options for the networks you want to connect to
-// Using specific RPC endpoints for better reliability
+// Using official Sui endpoints with CORS support
 const { networkConfig } = createNetworkConfig({
   testnet: { 
-    url: "https://fullnode.testnet.sui.io:443",
+    url: "https://fullnode.testnet.sui.io",
     // Fallback URLs if needed
-    websocketUrl: "wss://fullnode.testnet.sui.io:443"
+    websocketUrl: "wss://fullnode.testnet.sui.io"
   },
   mainnet: { 
-    url: "https://fullnode.mainnet.sui.io:443",
-    websocketUrl: "wss://fullnode.mainnet.sui.io:443"
+    url: "https://fullnode.mainnet.sui.io",
+    websocketUrl: "wss://fullnode.mainnet.sui.io"
   },
 });
 

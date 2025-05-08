@@ -4,18 +4,14 @@ import { useState, useEffect } from 'react';
 import { useCurrentWallet } from '@mysten/dapp-kit';
 import { useSuiClient } from '@mysten/dapp-kit';
 import { 
-  createCampaign, 
-  donate, 
-  withdrawFunds, 
   getAllCampaigns, 
   getCampaignDetails,
   isGoalReached,
   Campaign
 } from '../lib/sui-campaigns';
-import { MOCK_CAMPAIGNS, getMockCampaignById } from '../lib/mock-campaigns';
+import { useTransactionExecution } from './useTransactionExecution';
 
-// Flag to use mock data (set to true for development or when blockchain connection fails)
-const USE_MOCK_DATA = process.env.NODE_ENV === 'development';
+// No mock implementations - using real blockchain calls only
 
 export function useSuiCampaigns() {
   const currentWallet = useCurrentWallet();
@@ -23,20 +19,20 @@ export function useSuiCampaigns() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+  
+  // Use our transaction execution hook
+  const { 
+    createCampaign: executeCreateCampaign, 
+    donate: executeDonate, 
+    withdrawFunds: executeWithdrawFunds,
+    isPending: isTransactionPending,
+    isWalletConnected
+  } = useTransactionExecution();
 
-  // Load all campaigns with retry logic and fallback to mock data
+  // Load all campaigns with retry logic
   const fetchCampaigns = async () => {
     setLoading(true);
     setError(null);
-    
-    // If we're explicitly using mock data, return it immediately
-    if (USE_MOCK_DATA) {
-      console.log('Using mock campaign data for development');
-      await new Promise(resolve => setTimeout(resolve, 500)); // Simulate network delay
-      setCampaigns(MOCK_CAMPAIGNS);
-      setLoading(false);
-      return MOCK_CAMPAIGNS;
-    }
     
     // Retry configuration
     const maxRetries = 3;
@@ -62,12 +58,11 @@ export function useSuiCampaigns() {
       } catch (err: any) {
         console.error(`Error loading campaigns (attempt ${attempt + 1}/${maxRetries}):`, err);
         
-        // If we've tried the maximum number of times, fallback to mock data
+        // If we've tried the maximum number of times, show error
         if (attempt === maxRetries - 1) {
-          console.warn('Falling back to mock campaign data due to network issues');
-          setCampaigns(MOCK_CAMPAIGNS);
+          setError('Failed to load campaigns from blockchain. Please try again later.');
           setLoading(false);
-          return MOCK_CAMPAIGNS;
+          return [];
         }
         
         // Otherwise wait before retrying
@@ -76,10 +71,9 @@ export function useSuiCampaigns() {
     }
     
     // This should never be reached, but just in case
-    console.warn('Falling back to mock campaign data (unexpected path)');
-    setCampaigns(MOCK_CAMPAIGNS);
+    setError('Unexpected error loading campaigns');
     setLoading(false);
-    return MOCK_CAMPAIGNS;
+    return [];
   };
 
   const handleContractCall = async <T,>(fn: Function, ...args: any[]): Promise<T> => {
@@ -98,7 +92,7 @@ export function useSuiCampaigns() {
 
   return {
     campaigns,
-    loading,
+    loading: loading || isTransactionPending,
     error,
     connected: !!currentWallet,
     wallet: currentWallet,
@@ -111,29 +105,15 @@ export function useSuiCampaigns() {
       deadline: number,
       category: string
     ) => {
-      if (!currentWallet) throw new Error('Wallet not connected');
-      
-      if (USE_MOCK_DATA) {
-        console.log(`Using mock campaign creation for development: ${name}`);
-        // Simulate network delay
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        // Return a mock transaction result
-        return {
-          digest: `mock_tx_${Date.now()}`,
-          status: 'success',
-          effects: { status: { status: 'success' } },
-          // Mock the new campaign object ID
-          objectChanges: [{
-            type: 'created',
-            objectId: `0x${Math.random().toString(16).substring(2, 42)}`
-          }]
-        };
+      // Check if wallet is connected
+      if (!isWalletConnected) {
+        setError('Wallet not connected. Please connect your wallet first.');
+        throw new Error('Wallet not connected. Please connect your wallet first.');
       }
       
       try {
-        return await handleContractCall(
-          createCampaign, 
-          currentWallet, 
+        setLoading(true);
+        const result = await executeCreateCampaign(
           name, 
           description, 
           imageUrl, 
@@ -141,9 +121,13 @@ export function useSuiCampaigns() {
           deadline, 
           category
         );
-      } catch (err) {
+        setLoading(false);
+        return result;
+      } catch (err: any) {
+        setLoading(false);
+        setError(err.message || 'Error during campaign creation');
         console.error('Error during campaign creation:', err);
-        throw err; // We don't fall back to mock for transactions that modify state
+        throw err;
       }
     },
     donate: async (
@@ -151,62 +135,60 @@ export function useSuiCampaigns() {
       amount: number,
       isAnonymous: boolean = false
     ) => {
-      if (!currentWallet) throw new Error('Wallet not connected');
-      
-      if (USE_MOCK_DATA) {
-        console.log(`Using mock donation for development: ${amount} to campaign ${campaignId}`);
-        // Simulate network delay
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        // Return a mock transaction result
-        return {
-          digest: `mock_tx_${Date.now()}`,
-          status: 'success',
-          effects: { status: { status: 'success' } }
-        };
+      // Check if wallet is connected
+      if (!isWalletConnected) {
+        setError('Wallet not connected. Please connect your wallet first.');
+        throw new Error('Wallet not connected. Please connect your wallet first.');
       }
       
       try {
-        return await handleContractCall(donate, currentWallet, campaignId, amount, isAnonymous);
-      } catch (err) {
+        setLoading(true);
+        const result = await executeDonate(campaignId, amount, isAnonymous);
+        setLoading(false);
+        return result;
+      } catch (err: any) {
+        setLoading(false);
+        setError(err.message || 'Error during donation');
         console.error('Error during donation:', err);
-        throw err; // We don't fall back to mock for transactions that modify state
+        throw err;
       }
     },
     withdrawFunds: async (
       campaignId: string,
       capabilityId: string
     ) => {
-      if (!currentWallet) throw new Error('Wallet not connected');
-      return handleContractCall(withdrawFunds, currentWallet, campaignId, capabilityId);
+      // Check if wallet is connected
+      if (!isWalletConnected) {
+        setError('Wallet not connected. Please connect your wallet first.');
+        throw new Error('Wallet not connected. Please connect your wallet first.');
+      }
+      
+      try {
+        setLoading(true);
+        const result = await executeWithdrawFunds(campaignId, capabilityId);
+        setLoading(false);
+        return result;
+      } catch (err: any) {
+        setLoading(false);
+        setError(err.message || 'Error during withdrawal');
+        console.error('Error during withdrawal:', err);
+        throw err;
+      }
     },
     getCampaignDetails: async (campaignId: string) => {
-      if (USE_MOCK_DATA) {
-        console.log('Using mock campaign details for development');
-        await new Promise(resolve => setTimeout(resolve, 300)); // Simulate network delay
-        return getMockCampaignById(campaignId);
-      }
       try {
         return await handleContractCall(getCampaignDetails, client, campaignId);
       } catch (err) {
-        console.warn('Falling back to mock campaign details due to network issues');
-        return getMockCampaignById(campaignId);
+        console.error('Error getting campaign details:', err);
+        throw err;
       }
     },
     isGoalReached: async (campaignId: string) => {
-      if (USE_MOCK_DATA) {
-        console.log('Using mock goal check for development');
-        await new Promise(resolve => setTimeout(resolve, 300)); // Simulate network delay
-        const campaign = getMockCampaignById(campaignId);
-        if (!campaign) return false;
-        return BigInt(campaign.currentAmount) >= BigInt(campaign.goalAmount);
-      }
       try {
         return await handleContractCall(isGoalReached, client, campaignId);
       } catch (err) {
-        console.warn('Falling back to mock goal check due to network issues');
-        const campaign = getMockCampaignById(campaignId);
-        if (!campaign) return false;
-        return BigInt(campaign.currentAmount) >= BigInt(campaign.goalAmount);
+        console.error('Error checking if goal reached:', err);
+        throw err;
       }
     }
   };

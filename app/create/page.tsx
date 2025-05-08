@@ -3,10 +3,11 @@
 import Footer from "@/components/footer"
 import Link from "next/link"
 import { useState, useRef, useEffect } from "react"
-import { useCurrentWallet } from "@mysten/dapp-kit"
+import { useCurrentWallet, ConnectButton, useCurrentAccount } from "@mysten/dapp-kit"
 import { useSuiCampaigns } from "@/hooks/useSuiCampaigns"
 import { useRouter } from "next/navigation"
 import { toast } from "react-hot-toast"
+import { WalletConnectButton } from "@/components/WalletConnectButton"
 
 const categories = [
   "Community Project",
@@ -18,7 +19,11 @@ const categories = [
 export default function CreateCrowdfundPage() {
   const router = useRouter()
   const currentWallet = useCurrentWallet()
-  const { createCampaign, loading, error, connected } = useSuiCampaigns()
+  const currentAccount = useCurrentAccount()
+  const { createCampaign, loading, error } = useSuiCampaigns()
+  
+  // Check if wallet is connected
+  const isWalletConnected = !!currentWallet?.isConnected && !!currentAccount
   
   const [title, setTitle] = useState("")
   const [description, setDescription] = useState("")
@@ -56,7 +61,7 @@ export default function CreateCrowdfundPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    if (!connected) {
+    if (!isWalletConnected) {
       toast.error("Please connect your wallet first")
       return
     }
@@ -111,12 +116,21 @@ export default function CreateCrowdfundPage() {
       <main className="flex-1">
         <div className="max-w-2xl mx-auto py-12 px-4">
           <Link href="/" className="text-gray-600 text-sm mb-8 inline-block"> Back to Home</Link>
-          <h1 className="text-3xl font-bold mb-10">Start a new crowdfund</h1>
+          <h1 className="text-3xl font-bold mb-6">Start a new crowdfund</h1>
           
-          {!connected && (
+          {/* Wallet Connection Status */}
+          <div className="mb-8 p-4 bg-gray-50 rounded-lg border">
+            <h2 className="text-lg font-medium mb-2">Wallet Connection</h2>
+            <p className="text-sm text-gray-600 mb-3">
+              You need to connect your Sui wallet to create a campaign. All transactions will be signed using your connected wallet.
+            </p>
+            <WalletConnectButton />
+          </div>
+          
+          {!isWalletConnected && (
             <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4 mb-6">
-              <p className="text-yellow-700">
-                Please connect your wallet to create a campaign
+              <p className="text-yellow-800 text-sm">
+                You need to connect your wallet to create a campaign. All transactions will be signed using your connected wallet.
               </p>
             </div>
           )}
@@ -231,11 +245,11 @@ export default function CreateCrowdfundPage() {
               <button
                 type="submit"
                 className={`w-full max-w-xs rounded-full bg-sui-navy text-white py-3 text-lg font-medium ${
-                  !connected || loading ? "opacity-50 cursor-not-allowed" : "hover:bg-sui-navy/90"
+                  !isWalletConnected || loading ? "opacity-50 cursor-not-allowed" : "hover:bg-sui-navy/90"
                 }`}
-                disabled={!connected || loading}
+                disabled={!isWalletConnected || loading}
               >
-                {loading ? "Creating..." : "Create Crowdfund"}
+                {loading ? "Creating..." : isWalletConnected ? "Create Crowdfund" : "Connect Wallet to Continue"}
               </button>
               <span className="text-xs text-gray-500 mt-2">
                 Tip: Review your inputs properly before clicking on "Create Crowdfund"

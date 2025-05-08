@@ -5,6 +5,7 @@ import { SUI_CONFIG } from './sui-config';
 
 // Import RPC provider from @mysten/sui.js
 import { JsonRpcProvider, Connection } from '@mysten/sui.js';
+import { executeTransaction } from './wallet-adapter';
 
 // Initialize Sui client with the configured network
 const connection = new Connection({

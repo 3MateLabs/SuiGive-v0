@@ -1,6 +1,7 @@
 import { SUI_CONFIG } from './sui-config';
 import { TransactionBlock } from '@mysten/sui.js/transactions';
 import { SuiClient } from '@mysten/sui.js/client';
+import { executeTransaction } from './wallet-adapter';
 
 // Initialize Sui client (use testnet by default)
 const client = new SuiClient({ url: 'https://fullnode.testnet.sui.io' });

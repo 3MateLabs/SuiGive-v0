@@ -3,6 +3,47 @@
 import { SUI_CONFIG } from './sui-config';
 import { Transaction } from '@mysten/sui/transactions';
 import { SuiClient } from '@mysten/sui/client';
+import { executeDappKitTransaction } from './dapp-kit-adapter';
+
+// Simple request limiter to prevent too many concurrent requests
+class RequestLimiter {
+  private queue: Array<() => Promise<void>> = [];
+  private running = 0;
+  private maxConcurrent: number;
+
+  constructor(maxConcurrent = 2) {
+    this.maxConcurrent = maxConcurrent;
+  }
+
+  async add<T>(fn: () => Promise<T>): Promise<T> {
+    return new Promise<T>((resolve, reject) => {
+      this.queue.push(async () => {
+        try {
+          this.running++;
+          const result = await fn();
+          resolve(result);
+        } catch (error) {
+          reject(error);
+        } finally {
+          this.running--;
+          this.processNext();
+        }
+      });
+
+      this.processNext();
+    });
+  }
+
+  private processNext(): void {
+    if (this.running < this.maxConcurrent && this.queue.length > 0) {
+      const next = this.queue.shift();
+      if (next) next();
+    }
+  }
+}
+
+// Create a global request limiter
+const requestLimiter = new RequestLimiter(2);
 
 // Define campaign interface
 export interface Campaign {
@@ -28,7 +69,8 @@ export async function createCampaign(
   imageUrl: string,
   goalAmount: number,
   deadline: number,
-  category: string
+  category: string,
+  client?: SuiClient
 ) {
   try {
     const tx = new Transaction();
@@ -49,10 +91,8 @@ export async function createCampaign(
       ],
     });
     
-    // Sign and execute the transaction
-    const result = await wallet.signAndExecuteTransactionBlock({
-      transactionBlock: tx,
-    });
+    // Sign and execute the transaction using our dapp-kit adapter
+    const result = await executeDappKitTransaction(wallet, tx, client);
     
     return result;
   } catch (error) {
@@ -68,7 +108,8 @@ export async function donate(
   wallet: any,
   campaignId: string,
   amount: number,
-  isAnonymous: boolean = false
+  isAnonymous: boolean = false,
+  client?: SuiClient
 ) {
   try {
     const tx = new Transaction();
@@ -88,10 +129,8 @@ export async function donate(
       ],
     });
     
-    // Sign and execute the transaction
-    const result = await wallet.signAndExecuteTransactionBlock({
-      transactionBlock: tx,
-    });
+    // Sign and execute the transaction using our dapp-kit adapter
+    const result = await executeDappKitTransaction(wallet, tx, client);
     
     return result;
   } catch (error) {
@@ -106,7 +145,8 @@ export async function donate(
 export async function withdrawFunds(
   wallet: any,
   campaignId: string,
-  capabilityId: string
+  capabilityId: string,
+  client?: SuiClient
 ) {
   try {
     const tx = new Transaction();
@@ -123,10 +163,8 @@ export async function withdrawFunds(
       ],
     });
     
-    // Sign and execute the transaction
-    const result = await wallet.signAndExecuteTransactionBlock({
-      transactionBlock: tx,
-    });
+    // Sign and execute the transaction using our dapp-kit adapter
+    const result = await executeDappKitTransaction(wallet, tx, client);
     
     return result;
   } catch (error) {
@@ -139,6 +177,8 @@ export async function withdrawFunds(
  * Get all campaigns from the registry
  */
 export async function getAllCampaigns(client: SuiClient): Promise<Campaign[]> {
+  // Use the request limiter to prevent too many concurrent requests
+  return requestLimiter.add(async () => {
   if (!client) {
     console.error('SuiClient is not initialized');
     throw new Error('SuiClient is not initialized');
@@ -150,22 +190,38 @@ export async function getAllCampaigns(client: SuiClient): Promise<Campaign[]> {
     throw new Error('Registry ID is not configured');
   }
 
-  try {
-    console.log('Fetching registry object:', SUI_CONFIG.REGISTRY_ID);
+  // Retry configuration
+  const maxRetries = 3;
+  const retryDelay = 3000; // 3 seconds
+  const initialBackoff = 1000; // 1 second
+  
+  let lastError: Error | null = null;
+  
+  // Retry loop
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      // Calculate exponential backoff delay if this is a retry
+      if (attempt > 0) {
+        const backoffTime = initialBackoff * Math.pow(2, attempt - 1);
+        console.log(`Applying exponential backoff: waiting ${backoffTime/1000} seconds before retry ${attempt + 1}...`);
+        await new Promise(resolve => setTimeout(resolve, backoffTime));
+      }
+
+      console.log(`Fetching registry object (attempt ${attempt + 1}/${maxRetries}):`, SUI_CONFIG.REGISTRY_ID);
+      
+      // First, get the registry object with timeout
+      const fetchRegistryPromise = client.getObject({
+        id: SUI_CONFIG.REGISTRY_ID,
+        options: { showContent: true }
+      });
+      
+      // Add timeout to the fetch operation
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Registry fetch timeout')), 20000); // 20 seconds timeout
+      });
     
-    // First, get the registry object with timeout
-    const fetchRegistryPromise = client.getObject({
-      id: SUI_CONFIG.REGISTRY_ID,
-      options: { showContent: true }
-    });
-    
-    // Add timeout to the fetch operation
-    const timeoutPromise = new Promise((_, reject) => {
-      setTimeout(() => reject(new Error('Registry fetch timeout')), 10000); // 10 seconds timeout
-    });
-    
-    // Race between fetch and timeout
-    const registry = await Promise.race([fetchRegistryPromise, timeoutPromise]) as any;
+      // Race between fetch and timeout
+      const registry = await Promise.race([fetchRegistryPromise, timeoutPromise]) as any;
     
     // Extract campaign IDs from registry
     const registryData = registry.data?.content as any;
@@ -233,27 +289,40 @@ export async function getAllCampaigns(client: SuiClient): Promise<Campaign[]> {
       }
     }
     
-    console.log(`Successfully fetched ${results.length} campaigns`);
-    return results;
-  } catch (error: any) {
-    console.error('Error fetching campaigns:', error);
-    // Provide more detailed error information
-    const errorMessage = error.message || 'Unknown error';
-    const errorDetails = {
-      message: errorMessage,
-      stack: error.stack,
-      name: error.name,
-      registryId: SUI_CONFIG.REGISTRY_ID
-    };
-    console.error('Error details:', errorDetails);
-    throw new Error(`Failed to fetch campaigns: ${errorMessage}`);
+      console.log(`Successfully fetched ${results.length} campaigns`);
+      return results;
+    } catch (error: any) {
+      lastError = error;
+      const errorMessage = error.message || 'Unknown error';
+      console.error(`Error fetching campaigns (attempt ${attempt + 1}/${maxRetries}):`, errorMessage);
+      
+      // No need to wait here as we're already using exponential backoff at the beginning of the loop
+      // Just log the error and continue to the next iteration
+      if (attempt < maxRetries - 1) {
+        console.log(`Will retry with exponential backoff...`);
+      }
+    }
   }
+  
+  // If we've exhausted all retries, throw the last error
+  const errorMessage = lastError?.message || 'Unknown error';
+  const errorDetails = {
+    message: errorMessage,
+    stack: lastError?.stack,
+    name: lastError?.name,
+    registryId: SUI_CONFIG.REGISTRY_ID
+  };
+  console.error('All retry attempts failed. Error details:', errorDetails);
+  throw new Error(`Failed to fetch campaigns after ${maxRetries} attempts: ${errorMessage}`);
+  });
 }
 
 /**
  * Get campaign details
  */
 export async function getCampaignDetails(client: SuiClient, campaignId: string): Promise<Campaign | null> {
+  // Use the request limiter to prevent too many concurrent requests
+  return requestLimiter.add(async () => {
   try {
     const campaign = await client.getObject({
       id: campaignId,
@@ -278,9 +347,10 @@ export async function getCampaignDetails(client: SuiClient, campaignId: string):
       createdAt: campaignData.fields.created_at
     };
   } catch (error) {
-    console.error(`Error fetching campaign ${campaignId}:`, error);
+    console.error('Error fetching campaign details:', error);
     return null;
   }
+  });
 }
 
 /**

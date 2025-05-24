@@ -293,12 +293,24 @@ export default function DonatePage() {
                         campaignId={campaign.id} 
                         campaignName={campaign.name} 
                         onDonationComplete={() => {
-                          // Refresh campaign details after donation
-                          getCampaignDetails(campaign.id).then(updatedCampaign => {
-                            if (updatedCampaign) {
-                              setCampaign(updatedCampaign as Campaign);
-                            }
-                          });
+                          // Show loading toast
+                          toast.loading('Updating campaign data...', { id: 'update-campaign' });
+                          
+                          // Add a delay to allow the blockchain to process the transaction
+                          setTimeout(() => {
+                            // Refresh campaign details after donation
+                            getCampaignDetails(campaign.id).then(updatedCampaign => {
+                              if (updatedCampaign) {
+                                setCampaign(updatedCampaign as Campaign);
+                                toast.success('Campaign data updated!', { id: 'update-campaign' });
+                              } else {
+                                toast.error('Failed to update campaign data', { id: 'update-campaign' });
+                              }
+                            }).catch(err => {
+                              console.error('Error refreshing campaign:', err);
+                              toast.error('Failed to update campaign data', { id: 'update-campaign' });
+                            });
+                          }, 5000); // 5-second delay to allow blockchain confirmation
                         }}
                       />
                     </div>

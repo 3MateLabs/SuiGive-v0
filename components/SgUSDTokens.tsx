@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { useCurrentAccount, useSignTransaction, useSuiClient } from '@mysten/dapp-kit';
+import { useCurrentAccount, useSignAndExecuteTransaction, useSuiClient } from '@mysten/dapp-kit';
 import { Transaction } from '@mysten/sui/transactions';
 import { bcs } from '@mysten/sui/bcs';
 import { SUI_CONFIG } from '@/lib/sui-config';
@@ -9,7 +9,7 @@ import { toast } from 'react-hot-toast';
 
 export default function SgUSDTokens() {
   const currentAccount = useCurrentAccount();
-  const { mutate: signTransaction } = useSignTransaction();
+  const { mutate: signAndExecute } = useSignAndExecuteTransaction();
   const client = useSuiClient();
   const [amount, setAmount] = useState<number>(100);
   const [loading, setLoading] = useState<boolean>(false);
@@ -62,6 +62,7 @@ export default function SgUSDTokens() {
 
     try {
       setLoading(true);
+      toast.loading('Preparing transaction...', { id: 'mint-sgusd' });
 
       // Create transaction
       const tx = new Transaction();
@@ -85,13 +86,28 @@ export default function SgUSDTokens() {
         ],
       });
 
-      // Sign and execute the transaction
-      const result = await signTransaction({
-        transaction: tx,
+      // Sign and execute the transaction in one step
+      toast.loading('Processing transaction...', { id: 'mint-sgusd' });
+      
+      await new Promise((resolve, reject) => {
+        signAndExecute(
+          { transaction: tx },
+          {
+            onSuccess: (result) => {
+              console.log('Transaction executed successfully:', result);
+              toast.success('sgUSD tokens minted successfully!', { id: 'mint-sgusd' });
+              resolve(result);
+            },
+            onError: (error) => {
+              console.error('Transaction failed:', error);
+              toast.error(`Failed to mint tokens: ${error.message || 'Unknown error'}`, { id: 'mint-sgusd' });
+              reject(error);
+            }
+          }
+        );
       });
-
-      console.log('Mint transaction signed:', result);
-      toast.success(`Transaction signed! sgUSD tokens will be minted shortly.`);
+      
+      // The transaction has been executed successfully at this point
       
       // Refresh balance after a short delay to allow transaction to process
       setTimeout(async () => {

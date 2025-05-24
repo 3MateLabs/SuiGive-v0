@@ -49,7 +49,7 @@ export function WalletConnectButton({
   if (variant === "navbar") {
     return (
       <div className={`${className}`}>
-        <ConnectButton className="text-sm" />
+          <ConnectButton className="text-sm" />
       </div>
     );
   }

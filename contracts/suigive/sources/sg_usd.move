@@ -20,7 +20,7 @@ module suigive::sg_usd {
     }
 
     /// Error codes
-    const EMintingDisabled: u64 = 0;
+    const EMintingDisabled: u64 = 0;    
     const ENotAuthorized: u64 = 1;
 
     /// One-time witness for the currency

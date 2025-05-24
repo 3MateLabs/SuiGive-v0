@@ -18,7 +18,6 @@ export default function Navbar() {
         {/* Center: Navigation */}
         <nav className="hidden md:flex items-center space-x-8">
           <Link href="/how-it-works" className="text-base font-medium sui-navy-text hover:underline">How it works</Link>
-          <Link href="/dashboard" className="text-base font-medium sui-navy-text hover:underline">Dashboard</Link>
           <Link href="/mint" className="text-base font-medium sui-navy-text hover:underline">Mint</Link>
           <Link href="/admin" className="text-base font-medium sui-navy-text hover:underline">Admin</Link>
         </nav>

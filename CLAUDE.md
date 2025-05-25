@@ -10,9 +10,9 @@ npm run dev          # Start Next.js development server
 npm run build        # Build production bundle
 npm run lint         # Run ESLint
 
-# Package management (use --legacy-peer-deps for React 19 compatibility)
-npm install --legacy-peer-deps    # Install dependencies
-npm ci --legacy-peer-deps         # Clean install
+# Package management
+npm install             # Install dependencies
+npm ci                  # Clean install
 
 # Move contract development (in contracts/suigive/)
 sui move build       # Build Move contracts

@@ -14,7 +14,7 @@ import {
   DonationToken,
   SgSuiToken
 } from '@/lib/sui-tokens';
-import { useTransactionExecution } from './useTransactionExecution';
+import { useTransactionExecution, TransactionExecutionHook } from './useTransactionExecution';
 
 export function useSuiTokens() {
   const client = useSuiClient();
@@ -148,7 +148,7 @@ export function useSuiTokens() {
   };
 
   // Redeem sgSUI tokens for SUI
-  const redeemSgSuiTokensForSui = async (treasuryId: string, tokenId: string) => {
+  const redeemSgSuiTokensForSui = async (treasuryId: string, tokenId: string, campaignId: string) => {
     if (!isWalletConnected) {
       toast.error("Please connect your wallet first");
       return false;
@@ -162,7 +162,8 @@ export function useSuiTokens() {
         currentWallet,
         client,
         treasuryId,
-        tokenId
+        tokenId,
+        campaignId
       );
       
       if (success) {

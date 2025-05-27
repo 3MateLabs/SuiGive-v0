@@ -42,7 +42,14 @@ export default function SgSuiTokens() {
       return;
     }
     
-    const success = await redeemSgSuiTokensForSui(treasuryId, selectedTokenId);
+    // Find the selected token to get its campaignId
+    const selectedToken = sgSuiTokens.find(token => token.id === selectedTokenId);
+    if (!selectedToken) {
+      toast.error('Selected token not found');
+      return;
+    }
+    
+    const success = await redeemSgSuiTokensForSui(treasuryId, selectedTokenId, selectedToken.campaignId);
     if (success) {
       setShowRedeemModal(false);
       setSelectedTokenId('');

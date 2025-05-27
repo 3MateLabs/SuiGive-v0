@@ -67,7 +67,7 @@ export default function CompletedCrowdfunds() {
                   Funded Successfully
                 </div>
                 <div className="relative h-48 w-full">
-                  <Image src={project.image || "/placeholder.svg"} alt={project.title} fill className="object-cover" />
+                  <Image src={project.image || "/placeholder.svg"} alt={project.title} fill className="object-cover" priority />
                 </div>
               </div>
 

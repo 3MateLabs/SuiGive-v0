@@ -29,7 +29,10 @@ export default function Navbar() {
           <Link href="/create">
             <button className="bg-sui-navy text-white rounded-full px-5 py-2 font-medium hover:bg-sui-navy/90 transition">Create Campaign</button>
           </Link>
-          <WalletConnectButton variant="navbar" showMessage={false} />
+          <div className="flex items-center">
+            <SgUSDBalanceDisplay />
+            <WalletConnectButton variant="navbar" showMessage={false} />
+          </div>
         </div>
       </div>
     </header>

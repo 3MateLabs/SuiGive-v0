@@ -318,6 +318,7 @@ export default function DashboardPage() {
                         alt={project.title}
                         fill
                         className="object-cover"
+                        priority
                       />
                     </div>
                     <div className="flex-1 p-6 flex flex-col justify-between">

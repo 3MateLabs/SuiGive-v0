@@ -54,8 +54,14 @@ function Calendar({
         ...classNames,
       }}
       components={{
-        IconLeft: ({ ...props }) => <ChevronLeft className="h-4 w-4" />,
-        IconRight: ({ ...props }) => <ChevronRight className="h-4 w-4" />,
+        PreviousMonthButton: (props) => {
+          // Create a button that uses the ChevronLeft icon but doesn't pass incompatible props to SVG
+          return <button {...props}><ChevronLeft className="h-4 w-4" /></button>;
+        },
+        NextMonthButton: (props) => {
+          // Create a button that uses the ChevronRight icon but doesn't pass incompatible props to SVG
+          return <button {...props}><ChevronRight className="h-4 w-4" /></button>;
+        },
       }}
       {...props}
     />

@@ -1,5 +1,5 @@
 import { SUI_CONFIG } from './sui-config';
-import { TransactionBlock } from '@mysten/sui/transactions';
+import { Transaction } from '@mysten/sui/transactions';
 import { SuiClient } from '@mysten/sui/client';
 import { executeTransaction } from './wallet-adapter';
 
@@ -23,7 +23,7 @@ export async function createCampaign(
   deadline: number,
   category: string
 ) {
-  const tx = new TransactionBlock();
+  const tx = new Transaction();
   
   // Get the registry object
   const registry = tx.object(SUI_CONFIG.REGISTRY_ID);
@@ -42,7 +42,7 @@ export async function createCampaign(
     ],
   });
   
-  return wallet.signAndExecuteTransactionBlock({
+  return wallet.signAndExecuteTransaction({
     transactionBlock: tx,
   });
 }
@@ -56,7 +56,7 @@ export async function donate(
   amount: number,
   isAnonymous: boolean
 ) {
-  const tx = new TransactionBlock();
+  const tx = new Transaction();
   
   // Get the campaign object
   const campaign = tx.object(campaignId);
@@ -74,7 +74,7 @@ export async function donate(
     ],
   });
   
-  return wallet.signAndExecuteTransactionBlock({
+  return wallet.signAndExecuteTransaction({
     transactionBlock: tx,
   });
 }
@@ -87,7 +87,7 @@ export async function withdrawFunds(
   campaignId: string,
   capabilityId: string
 ) {
-  const tx = new TransactionBlock();
+  const tx = new Transaction();
   
   // Get the campaign and capability objects
   const campaign = tx.object(campaignId);
@@ -101,7 +101,7 @@ export async function withdrawFunds(
     ],
   });
   
-  return wallet.signAndExecuteTransactionBlock({
+  return wallet.signAndExecuteTransaction({
     transactionBlock: tx,
   });
 }
@@ -190,20 +190,29 @@ export async function isGoalReached(campaignId: string) {
     const campaign = await getCampaignDetails(campaignId);
     if (!campaign) return false;
     
+    // Create a transaction for inspection
+    const tx = new Transaction();
+    // Add the move call to check if goal is reached
+    tx.moveCall({
+      target: `${SUI_CONFIG.PACKAGE_ID}::crowdfunding::is_goal_reached`,
+      arguments: [tx.object(campaignId)],
+    });
+    
+    // Execute the transaction inspection
     return await client.devInspectTransactionBlock({
       sender: '0x0000000000000000000000000000000000000000000000000000000000000000',
-      transactionBlock: new TransactionBlock()
-        .moveCall({
-          target: `${SUI_CONFIG.PACKAGE_ID}::crowdfunding::is_goal_reached`,
-          arguments: [
-            new TransactionBlock().object(campaignId)
-          ],
-        })
-        .finish()
+      transactionBlock: tx
     }).then(result => {
       // Parse the result to determine if goal was reached
       if (result.effects?.status.status === 'success') {
-        return result.results?.[0]?.returnValues?.[0] === '1';
+        // Parse the return value correctly based on the new API format
+        const returnValue = result.results?.[0]?.returnValues?.[0];
+        if (!returnValue) return false;
+        
+        // Handle different possible return value formats using type-safe approach
+        // Convert the value to a string for comparison to avoid type issues
+        const value = String(returnValue[0]);
+        return value === '1' || value === 'true';
       }
       return false;
     });

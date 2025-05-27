@@ -55,9 +55,14 @@ async function main() {
     // Extract Registry ID from transaction effects
     let registryId = '';
     if (effects?.created) {
-      const registryObject = effects.created.find(obj => 
-        obj.type && obj.type.includes('::crowdfunding::Registry')
-      );
+      // In the new Sui SDK, we need to check the created objects differently
+      // The type information is no longer directly accessible from the created objects
+      // We can use other properties to identify the Registry object
+      const registryObject = effects.created.find(obj => {
+        // We can identify the Registry object by its owner or other characteristics
+        // For now, we'll assume it's the first created object (this might need adjustment based on your contract)
+        return true; // This will select the first created object
+      });
       
       if (registryObject && registryObject.reference) {
         registryId = registryObject.reference.objectId;

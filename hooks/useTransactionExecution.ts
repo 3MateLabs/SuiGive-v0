@@ -14,7 +14,18 @@ type TransactionOutput = any; // Using any for now as a workaround
  * This hook provides a wrapper around the useSignAndExecuteTransaction hook
  * from dapp-kit to make it easier to use in our application
  */
-export function useTransactionExecution() {
+export interface TransactionExecutionHook {
+  executeTransaction: (transaction: Transaction) => Promise<any>;
+  createCampaign: (name: string, description: string, imageUrl: string, goalAmount: number, deadline: number, category: string) => Promise<any>;
+  donate: (campaignId: string, amount: number, isAnonymous?: boolean) => Promise<any>;
+  donateSgUSD: (campaignId: string, coinObjectId: string, amount: number, isAnonymous?: boolean) => Promise<any>;
+  withdrawFunds: (campaignId: string, capabilityId: string) => Promise<any>;
+  isPending: boolean;
+  error: Error | null;
+  isWalletConnected: boolean;
+}
+
+export function useTransactionExecution(): TransactionExecutionHook {
   // Get the SUI client
   const client = useSuiClient();
   
@@ -213,12 +224,16 @@ export function useTransactionExecution() {
     // Get the sgUSD coin object
     const sgUSDCoin = tx.object(coinObjectId);
     
-    // Add the move call to donate with sgUSD
+    // First split the coin to get only the amount we want to donate
+    // This is critical - otherwise the entire coin will be donated
+    const splitCoin = tx.splitCoins(sgUSDCoin, [tx.pure.u64(amount.toString())]);
+    
+    // Add the move call to donate with sgUSD using only the split portion
     tx.moveCall({
       target: `${SUI_CONFIG.PACKAGE_ID}::crowdfunding::donate_sgusd`,
       arguments: [
         campaign,
-        sgUSDCoin,
+        splitCoin,  // Use the split coin with the exact amount
         tx.pure.string(""),  // Empty message
         tx.pure.bool(isAnonymous),
       ],
@@ -237,6 +252,7 @@ export function useTransactionExecution() {
 
   // Return the hook functions and state
   return {
+    executeTransaction,
     createCampaign,
     donate,
     donateSgUSD,
@@ -246,3 +262,5 @@ export function useTransactionExecution() {
     isWalletConnected: currentWallet?.isConnected && !!currentAccount
   };
 }
+
+// Type is now defined at the top of the file

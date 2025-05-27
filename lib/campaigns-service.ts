@@ -1,6 +1,6 @@
 "use client";
 
-import { TransactionBlock } from '@mysten/sui/transactions';
+import { Transaction } from '@mysten/sui/transactions';
 import { SUI_CONFIG } from './sui-config';
 
 // Import RPC provider from @mysten/sui
@@ -38,7 +38,7 @@ export async function createCampaign(
   category: string
 ) {
   try {
-    const tx = new TransactionBlock();
+    const tx = new Transaction();
     
     // Get the registry object
     const registry = tx.object(SUI_CONFIG.REGISTRY_ID);
@@ -57,7 +57,7 @@ export async function createCampaign(
     });
     
     // Sign and execute the transaction using the wallet adapter
-    const result = await wallet.signAndExecuteTransactionBlock({
+    const result = await wallet.signAndExecuteTransaction({
       transactionBlock: tx,
     });
     
@@ -78,7 +78,7 @@ export async function donate(
   isAnonymous: boolean = false
 ) {
   try {
-    const tx = new TransactionBlock();
+    const tx = new Transaction();
     
     // Get the campaign object
     const campaign = tx.object(campaignId);
@@ -97,7 +97,7 @@ export async function donate(
     });
     
     // Sign and execute the transaction using the wallet adapter
-    const result = await wallet.signAndExecuteTransactionBlock({
+    const result = await wallet.signAndExecuteTransaction({
       transactionBlock: tx,
     });
     
@@ -117,7 +117,7 @@ export async function withdrawFunds(
   capabilityId: string
 ) {
   try {
-    const tx = new TransactionBlock();
+    const tx = new Transaction();
     
     // Get the campaign and capability objects
     const campaign = tx.object(campaignId);
@@ -132,7 +132,7 @@ export async function withdrawFunds(
     });
     
     // Sign and execute the transaction using the wallet adapter
-    const result = await wallet.signAndExecuteTransactionBlock({
+    const result = await wallet.signAndExecuteTransaction({
       transactionBlock: tx,
     });
     

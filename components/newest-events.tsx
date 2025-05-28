@@ -1,6 +1,6 @@
 "use client"
 
-import { ArrowRight, Clock, DollarSign } from "lucide-react"
+import { ArrowRight, Clock, DollarSign, RefreshCw } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
@@ -9,6 +9,8 @@ import { useSuiCampaigns } from "@/hooks/useSuiCampaigns"
 import { useEffect, useState } from "react"
 import { Campaign } from "@/lib/sui-campaigns"
 import { formatDistanceToNow, format } from "date-fns"
+import { useCampaignProgress } from "@/hooks/useCampaignProgress"
+import { toast } from "react-hot-toast"
 
 export default function NewestEvents() {
   const { campaigns, loading, error, refreshCampaigns } = useSuiCampaigns();
@@ -42,8 +44,83 @@ export default function NewestEvents() {
     }
   }, [campaigns]);
   
-  // Calculate progress percentage based on current amount and goal amount
-  const calculateProgress = (current: string, goal: string) => {
+  // We'll use a map to store campaign progress data for each campaign
+  const [campaignProgressData, setCampaignProgressData] = useState<{[id: string]: {
+    loading: boolean;
+    progress: number;
+    currentAmount: string;
+    goalAmount: string;
+    currentAmountFormatted: string;
+    goalAmountFormatted: string;
+    lastBlockchainUpdate: number;
+  }}>({});
+  
+  // Function to refresh campaign data from the blockchain
+  const refreshCampaignProgress = async (campaignId: string) => {
+    // Mark this campaign as loading
+    setCampaignProgressData(prev => ({
+      ...prev,
+      [campaignId]: {
+        ...prev[campaignId],
+        loading: true
+      }
+    }));
+    
+    try {
+      // Get the campaign from our list
+      const campaign = displayCampaigns.find(c => c.id === campaignId);
+      if (!campaign) return;
+      
+      // Refresh the campaign data from the blockchain
+      await refreshCampaigns();
+      
+      // Update the progress data with the refreshed campaign data
+      // Note: The refreshCampaigns function will update the campaigns state
+      // which will trigger the useEffect that updates campaignProgressData
+      
+      toast.success('Campaign data refreshed!');
+    } catch (error) {
+      console.error('Error refreshing campaign progress:', error);
+      toast.error('Failed to refresh campaign data');
+      
+      // Mark as not loading even if there was an error
+      setCampaignProgressData(prev => ({
+        ...prev,
+        [campaignId]: {
+          ...prev[campaignId],
+          loading: false
+        }
+      }));
+    }
+  };
+  
+  // Initialize progress data for each campaign
+  useEffect(() => {
+    if (displayCampaigns.length > 0) {
+      const newProgressData: {[id: string]: any} = {};
+      
+      // Create progress data for each campaign
+      displayCampaigns.forEach(campaign => {
+        // Calculate initial progress for this campaign
+        const progress = calculateInitialProgress(campaign.currentAmount, campaign.goalAmount);
+        
+        newProgressData[campaign.id] = {
+          loading: false,
+          progress: progress,
+          currentAmount: campaign.currentAmount,
+          goalAmount: campaign.goalAmount,
+          currentAmountFormatted: formatAmount(campaign.currentAmount),
+          goalAmountFormatted: formatAmount(campaign.goalAmount),
+          lastBlockchainUpdate: Date.now()
+        };
+      });
+      
+      setCampaignProgressData(newProgressData);
+    }
+  }, [displayCampaigns]);
+  
+  // Helper function to calculate initial progress percentage
+  const calculateInitialProgress = (current: string, goal: string) => {
     try {
       const currentAmount = BigInt(current);
       const goalAmount = BigInt(goal);
@@ -56,6 +133,17 @@ export default function NewestEvents() {
     } catch (error) {
       console.error('Error calculating progress:', error);
       return 0;
+    }
+  };
+  
+  // Helper function to format amount for display
+  const formatAmount = (amount: string): string => {
+    try {
+      const amountBigInt = BigInt(amount);
+      return (Number(amountBigInt) / 1_000_000_000).toFixed(2);
+    } catch (error) {
+      console.error('Error formatting amount:', error);
+      return '0.00';
     }
   };
   
@@ -146,17 +234,36 @@ export default function NewestEvents() {
 
               <div className="p-6">
                 <div className="mb-4">
-                  {/* Calculate progress based on current and goal amounts */}
+                  {/* Use our progress hooks for consistent progress tracking */}
                   {(() => {
-                    const progress = calculateProgress(campaign.currentAmount, campaign.goalAmount);
+                    // Get the progress data for this campaign
+                    const progressData = campaignProgressData[campaign.id] || {
+                      progress: calculateInitialProgress(campaign.currentAmount, campaign.goalAmount),
+                      goalAmountFormatted: formatAmount(campaign.goalAmount)
+                    };
+                    
                     return (
                       <>
                         <div className="flex justify-between text-sm mb-1">
-                          <span className="font-medium">{progress}% Funded</span>
-                          <span>Goal: {Number(campaign.goalAmount) / 1_000_000_000} sgUSD</span>
+                          <span className="font-medium">{progressData.progress}% Funded</span>
+                          <span>Goal: {progressData.goalAmountFormatted} sgUSD</span>
+                          <button 
+                            onClick={(e) => {
+                              e.preventDefault(); // Prevent navigation to campaign page
+                              e.stopPropagation(); // Prevent event bubbling
+                              toast.loading('Refreshing data...', { id: `refresh-${campaign.id}` });
+                              refreshCampaignProgress(campaign.id);
+                              setTimeout(() => toast.success('Data refreshed!', { id: `refresh-${campaign.id}` }), 1000);
+                            }}
+                            className="text-xs text-blue-600 hover:underline flex items-center"
+                            disabled={progressData.loading}
+                          >
+                            <RefreshCw className="h-3 w-3 mr-1" />
+                            Refresh
+                          </button>
                         </div>
                         <div className="progress-bar">
-                          <div className="progress-bar-fill" style={{ width: `${progress}%` }}></div>
+                          <div className="progress-bar-fill" style={{ width: `${progressData.progress}%` }}></div>
                         </div>
                       </>
                     );

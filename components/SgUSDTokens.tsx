@@ -163,7 +163,12 @@ export default function SgUSDTokens() {
             : 'bg-indigo-600 hover:bg-indigo-700'
         }`}
       >
-        {loading ? 'Minting...' : 'Mint sgUSD Tokens'}
+        {loading ? (
+          <>
+            <span className="mr-2 inline-block h-4 w-4 animate-spin rounded-full border-2 border-solid border-white border-r-transparent align-[-0.125em]"></span>
+            Minting...
+          </>
+        ) : 'Mint sgUSD Tokens'}
       </button>
       
       {!currentAccount && (

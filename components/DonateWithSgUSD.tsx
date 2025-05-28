@@ -14,7 +14,7 @@ import { Label } from '@/components/ui/label';
 interface DonateWithSgUSDProps {
   campaignId: string;
   campaignName: string;
-  onDonationComplete?: () => void;
+  onDonationComplete?: (amount: number, amountInUnits: string) => void;
 }
 
 export default function DonateWithSgUSD({ campaignId, campaignName, onDonationComplete }: DonateWithSgUSDProps) {
@@ -100,13 +100,21 @@ export default function DonateWithSgUSD({ campaignId, campaignName, onDonationCo
       // Convert sgUSD to smallest unit (1 sgUSD = 10^9 units)
       const amountUnits = BigInt(Math.floor(parseFloat(sgUSDAmount) * 1_000_000_000));
       
-      await donateSgUSD(campaignId, selectedCoinId, Number(amountUnits), false);
+      // Execute the donation transaction
+      const result = await donateSgUSD(campaignId, selectedCoinId, Number(amountUnits), false);
       
       toast.success('sgUSD donation successful!', { id: 'donation' });
       
-      // Call the callback if provided
+      // Don't update DOM directly - instead rely on the callback to update state
+      // This ensures the UI is consistent with the state and persists across refreshes
+      console.log('Donation successful, amount:', parseFloat(sgUSDAmount));
+      
+      // Calculate donation amount in blockchain units for the callback
+      const donationAmountInUnits = Math.floor(parseFloat(sgUSDAmount) * 1_000_000_000).toString();
+      
+      // Call the callback with the donation amount information
       if (onDonationComplete) {
-        onDonationComplete();
+        onDonationComplete(parseFloat(sgUSDAmount), donationAmountInUnits);
       }
     } catch (error: any) {
       console.error('Error donating with sgUSD:', error);
@@ -279,7 +287,12 @@ export default function DonateWithSgUSD({ campaignId, campaignName, onDonationCo
             onClick={mintSgUSD}
             disabled={isLoading}
           >
-            {isLoading ? 'Processing...' : 'Mint sgUSD (testnet)'}
+            {isLoading ? (
+              <>
+                <span className="mr-2 inline-block h-4 w-4 animate-spin rounded-full border-2 border-solid border-white border-r-transparent align-[-0.125em]"></span>
+                Processing...
+              </>
+            ) : 'Mint sgUSD (testnet)'}
           </Button>
         </div>
       );
@@ -316,7 +329,12 @@ export default function DonateWithSgUSD({ campaignId, campaignName, onDonationCo
               onClick={mintSgUSD}
               disabled={isLoading}
             >
-              {isLoading ? 'Processing...' : 'Mint More sgUSD'}
+              {isLoading ? (
+                <>
+                  <span className="mr-2 inline-block h-4 w-4 animate-spin rounded-full border-2 border-solid border-black border-r-transparent align-[-0.125em]"></span>
+                  Processing...
+                </>
+              ) : 'Mint More sgUSD'}
             </Button>
             <Button 
               className="flex-1 bg-black hover:bg-gray-800 text-white" 
@@ -354,7 +372,12 @@ export default function DonateWithSgUSD({ campaignId, campaignName, onDonationCo
           onClick={handleSgUSDDonation}
           disabled={isLoading}
         >
-          {isLoading ? 'Processing...' : 'Donate sgUSD (testnet)'}
+          {isLoading ? (
+            <>
+              <span className="mr-2 inline-block h-4 w-4 animate-spin rounded-full border-2 border-solid border-white border-r-transparent align-[-0.125em]"></span>
+              Processing...
+            </>
+          ) : 'Donate sgUSD (testnet)'}
         </Button>
       </div>
     );

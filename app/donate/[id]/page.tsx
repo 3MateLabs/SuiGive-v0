@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { DollarSign, Heart, Share2, AlertCircle, Wallet, Clock } from "lucide-react"
+import { DollarSign, Heart, Share2, AlertCircle, Wallet, Clock, RefreshCw } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
 import Navbar from "@/components/navbar"
@@ -15,6 +15,7 @@ import { toast } from "react-hot-toast"
 import { formatDistanceToNow, format } from "date-fns"
 import { WalletConnectButton } from "@/components/WalletConnectButton"
 import DonateWithSgUSD from "@/components/DonateWithSgUSD"
+import { useCampaignProgress } from "@/hooks/useCampaignProgress"
 
 // We'll fetch real campaigns instead of using hardcoded ones
 
@@ -79,29 +80,16 @@ export default function DonatePage() {
     window.scrollTo(0, 0)
   }, [id, getCampaignDetails, refreshCampaigns])
 
-  // Calculate progress percentage
-  const calculateProgress = () => {
-    if (!campaign) return 0
-    
-    try {
-      // Add null checks before BigInt conversion
-      if (!campaign.currentAmount || !campaign.goalAmount) {
-        return 0;
-      }
-      
-      const currentAmount = BigInt(campaign.currentAmount)
-      const goalAmount = BigInt(campaign.goalAmount)
-      
-      if (goalAmount === BigInt(0)) return 0
-      
-      // Calculate percentage and convert to number (limited to 100%)
-      const percentage = Number((currentAmount * BigInt(100)) / goalAmount)
-      return Math.min(percentage, 100)
-    } catch (error) {
-      console.error('Error calculating progress:', error)
-      return 0
-    }
-  }
+  // Use our new campaign progress hook for reliable progress tracking
+  const {
+    loading: progressLoading,
+    progress,
+    currentAmountFormatted,
+    goalAmountFormatted,
+    addDonation,
+    refreshData: refreshProgress,
+    lastBlockchainUpdate
+  } = useCampaignProgress(typeof id === 'string' ? id : '');
 
   // Format the timestamp to "X days ago"
   const formatTimeAgo = (timestamp: string) => {
@@ -228,23 +216,32 @@ export default function DonatePage() {
                 <p className="text-gray-700 mb-6">{campaign.description}</p>
 
                 <div className="mb-6">
-                  {(() => {
-                    const progress = calculateProgress();
-                    return (
-                      <>
-                        <div className="flex justify-between text-sm mb-1">
-                          <span className="font-medium">{progress}% Funded</span>
-                          <span>Goal: {campaign?.goalAmount ? (Number(campaign.goalAmount) / 1_000_000_000) : 0} sgUSD</span>
-                        </div>
-                        <div className="w-full h-3 bg-gray-200 rounded-full overflow-hidden">
-                          <div
-                            className={`h-full ${progress > 66 ? "bg-green-500" : progress > 33 ? "bg-yellow-400" : "bg-red-500"}`}
-                            style={{ width: `${progress}%` }}
-                          ></div>
-                        </div>
-                      </>
-                    );
-                  })()}
+                  {/* Progress bar using useCampaignProgress hook */}
+                  <div className="flex justify-between text-sm mb-1">
+                    <span className="font-medium">{progress}% Funded</span>
+                    <span>Goal: {goalAmountFormatted} sgUSD</span>
+                    <button 
+                      onClick={() => {
+                        toast.loading('Refreshing data...', { id: 'refresh-progress' });
+                        refreshProgress();
+                        setTimeout(() => toast.success('Data refreshed!', { id: 'refresh-progress' }), 1000);
+                      }}
+                      className="text-xs text-blue-600 hover:underline flex items-center"
+                      disabled={progressLoading}
+                    >
+                      <RefreshCw className="h-3 w-3 mr-1" />
+                      Refresh Data
+                    </button>
+                  </div>
+                  <div className="progress-bar">
+                    <div
+                      className="progress-bar-fill"
+                      style={{ width: `${progress}%` }}
+                    ></div>
+                  </div>
+                  <div className="mt-2 text-xs text-gray-500">
+                    Current: <span>{currentAmountFormatted}</span> sgUSD
+                  </div>
                 </div>
 
                 <div className="flex items-center justify-between text-sm text-gray-600 pt-4 border-t">
@@ -292,25 +289,31 @@ export default function DonatePage() {
                       <DonateWithSgUSD 
                         campaignId={campaign.id} 
                         campaignName={campaign.name} 
-                        onDonationComplete={() => {
+                        onDonationComplete={(amountValue, amountInUnits) => {
                           // Show loading toast
                           toast.loading('Updating campaign data...', { id: 'update-campaign' });
                           
-                          // Add a delay to allow the blockchain to process the transaction
-                          setTimeout(() => {
-                            // Refresh campaign details after donation
-                            getCampaignDetails(campaign.id).then(updatedCampaign => {
-                              if (updatedCampaign) {
-                                setCampaign(updatedCampaign as Campaign);
-                                toast.success('Campaign data updated!', { id: 'update-campaign' });
-                              } else {
-                                toast.error('Failed to update campaign data', { id: 'update-campaign' });
-                              }
-                            }).catch(err => {
-                              console.error('Error refreshing campaign:', err);
-                              toast.error('Failed to update campaign data', { id: 'update-campaign' });
-                            });
-                          }, 5000); // 5-second delay to allow blockchain confirmation
+                          // Use our new addDonation function from useCampaignProgress
+                          // This will update the UI immediately and persist the data between refreshes
+                          const newTotal = addDonation(amountInUnits);
+                          
+                          // Update toast
+                          toast.success('Campaign progress updated!', { id: 'update-campaign' });
+                          
+                          // Log the update for debugging
+                          console.log('Campaign update after donation:', {
+                            donationAmount: amountValue,
+                            donationAmountInUnits: amountInUnits,
+                            newTotal
+                          });
+                          
+                          // Also update the campaign object for other UI elements
+                          if (campaign && campaign.currentAmount) {
+                            // Create a copy of the campaign with updated amount
+                            const updatedCampaign = {...campaign};
+                            updatedCampaign.currentAmount = newTotal;
+                            setCampaign(updatedCampaign);
+                          }
                         }}
                       />
                     </div>

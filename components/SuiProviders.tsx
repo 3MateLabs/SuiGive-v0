@@ -13,18 +13,14 @@ import '@mysten/dapp-kit/dist/index.css';
 // Using our proxy to avoid CORS issues
 const { networkConfig } = createNetworkConfig({
   testnet: { 
-    url: typeof window !== 'undefined' 
-      ? `${window.location.origin}/api/sui-proxy` 
-      : 'http://localhost:3000/api/sui-proxy',
-    // No websocket needed for our proxy
-    websocketUrl: undefined
+    url: getFullnodeUrl('testnet'),
+    // Use the official websocket URL
+    websocketUrl: 'wss://fullnode.testnet.sui.io:443'
   },
   mainnet: { 
-    url: typeof window !== 'undefined' 
-      ? `${window.location.origin}/api/sui-proxy` 
-      : 'http://localhost:3000/api/sui-proxy',
-    // No websocket needed for our proxy
-    websocketUrl: undefined
+    url: getFullnodeUrl('mainnet'),
+    // Use the official websocket URL
+    websocketUrl: 'wss://fullnode.mainnet.sui.io:443'
   },
 });
 

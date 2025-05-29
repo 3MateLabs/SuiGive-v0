@@ -232,8 +232,8 @@ export default function NewestEvents() {
               delay={index * 0.2}
             >
               <div className="p-6">
-                <h3 className="text-xl font-everett font-bold mb-2">{campaign.name}</h3>
-                <p className="text-sm text-gray-500 font-light mb-4">{campaign.description}</p>
+                <h3 className="text-xl font-everett font-bold mb-2 line-clamp-1">{campaign.name}</h3>
+                <p className="text-sm text-gray-500 font-light mb-4 line-clamp-2 h-10">{campaign.description}</p>
               </div>
 
               <div className="relative h-48 w-full">
@@ -257,43 +257,32 @@ export default function NewestEvents() {
                     
                     return (
                       <>
-                        <div className="flex justify-between text-sm mb-1">
-                          <span className="font-medium">{progressData.progress}% Funded</span>
-                          <span>Goal: {progressData.goalAmountFormatted} sgUSD</span>
-                          <button 
-                            onClick={(e) => {
-                              e.preventDefault(); // Prevent navigation to campaign page
-                              e.stopPropagation(); // Prevent event bubbling
-                              toast.loading('Refreshing data...', { id: `refresh-${campaign.id}` });
-                              refreshCampaignProgress(campaign.id);
-                              setTimeout(() => toast.success('Data refreshed!', { id: `refresh-${campaign.id}` }), 1000);
-                            }}
-                            className="text-xs text-blue-600 hover:underline flex items-center"
-                            disabled={progressData.loading}
-                          >
-                            <RefreshCw className="h-3 w-3 mr-1" />
-                            Refresh
-                          </button>
+                        <div className="flex flex-wrap justify-between text-sm mb-1">
+                          <span className="font-medium text-sui-navy">{progressData.progress}% Funded</span>
+                          <span className="text-gray-700">Goal: <span className="font-medium text-blue-500">{progressData.goalAmountFormatted}</span> sgUSD</span>
                         </div>
-                        <div className="progress-bar">
-                          <div className="progress-bar-fill" style={{ width: `${progressData.progress}%` }}></div>
+                        <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden mt-1 mb-2">
+                          <div 
+                            className="h-full bg-gradient-to-r from-green-400 to-green-500 rounded-full transition-all duration-500" 
+                            style={{ width: `${progressData.progress}%` }}
+                          ></div>
                         </div>
                       </>
                     );
                   })()}
                 </div>
 
-                <div className="flex justify-between items-center mt-4">
-                  <Link href={`/donate/${campaign.id}`} className="page-transition">
-                    <Button className="bg-sui-navy text-white hover:bg-sui-navy/90 rounded-md flex items-center transition-transform hover:scale-105">
-                      <DollarSign className="mr-1 h-4 w-4" />
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mt-4">
+                  <Link href={`/donate/${campaign.id}`} className="page-transition w-full sm:w-auto">
+                    <Button className="w-full sm:w-auto bg-sui-navy text-white hover:bg-sui-navy/90 rounded-full px-5 flex items-center justify-center transition-all duration-200 hover:shadow-md">
+                      <DollarSign className="mr-1.5 h-4 w-4" />
                       Donate Now
                     </Button>
                   </Link>
 
-                  <div className="flex items-center text-sm text-gray-600">
-                    <Clock className="h-4 w-4 mr-1" />
-                    <span>Ends on {campaign.deadline ? format(new Date(Number(campaign.deadline) * 1000), 'MMMM d, yyyy') : 'Unknown'}</span>
+                  <div className="flex items-center text-xs text-gray-600 bg-gray-50 px-3 py-1.5 rounded-full border border-gray-100">
+                    <Clock className="h-3.5 w-3.5 mr-1.5 text-gray-500" />
+                    <span>Ends on {campaign.deadline ? format(new Date(Number(campaign.deadline) * 1000), 'MMM d, yyyy') : 'Unknown'}</span>
                   </div>
                 </div>
               </div>

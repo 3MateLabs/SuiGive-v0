@@ -1,10 +1,12 @@
 "use client";
 
-import React, { useState, useEffect, ChangeEvent } from 'react';
+import React, { useState, useEffect, ChangeEvent, useCallback } from 'react';
 import { useCurrentAccount, useSuiClient, useSignAndExecuteTransaction } from '@mysten/dapp-kit';
 import { Transaction } from '@mysten/sui/transactions';
 import { SUI_CONFIG } from '@/lib/sui-config';
 import { useSuiCampaigns } from '@/hooks/useSuiCampaigns';
+import { useCachedCoins } from '@/hooks/useCachedSuiData';
+import { useGlobalSgUSDBalance, useStore } from '@/lib/store';
 import { toast } from 'react-hot-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,54 +21,96 @@ interface DonateWithSgUSDProps {
 
 export default function DonateWithSgUSD({ campaignId, campaignName, onDonationComplete }: DonateWithSgUSDProps) {
   const currentAccount = useCurrentAccount();
-  const client = useSuiClient();
+  const suiClient = useSuiClient();
   const { mutate: signAndExecute } = useSignAndExecuteTransaction();
   const { donateSgUSD, loading } = useSuiCampaigns();
   
   const [sgUSDAmount, setSgUSDAmount] = useState<string>('10');
-  const [sgUSDCoins, setSgUSDCoins] = useState<{id: string, balance: string, balanceValue: bigint}[]>([]);
   const [selectedCoinId, setSelectedCoinId] = useState<string>('');
-  const [sgUSDBalance, setSgUSDBalance] = useState<string>('0');
-  const [sgUSDBalanceValue, setSgUSDBalanceValue] = useState<bigint>(BigInt(0));
   const [isLoading, setIsLoading] = useState<boolean>(false);
   
-  // Fetch sgUSD coins when account changes
-  useEffect(() => {
-    const fetchSgUSDCoins = async () => {
-      if (!currentAccount?.address) return;
-      
-      try {
-        // Query for sgUSD coins owned by the user
-        const coins = await client.getCoins({
-          owner: currentAccount.address,
-          coinType: `${SUI_CONFIG.PACKAGE_ID}::sg_usd::SG_USD`
-        });
-        
-        // Calculate total balance
-        const totalBalance = coins.data.reduce((acc, coin) => acc + BigInt(coin.balance), BigInt(0));
-        setSgUSDBalanceValue(totalBalance);
-        setSgUSDBalance(formatBalance(totalBalance));
-        
-        // Format coins with balance
-        const formattedCoins = coins.data.map(coin => ({
-          id: coin.coinObjectId,
-          balance: formatBalance(BigInt(coin.balance)),
-          balanceValue: BigInt(coin.balance)
-        }));
-        
-        setSgUSDCoins(formattedCoins);
-        
-        // Select the first coin by default if available
-        if (formattedCoins.length > 0) {
-          setSelectedCoinId(formattedCoins[0].id);
-        }
-      } catch (error) {
-        console.error('Error fetching sgUSD coins:', error);
-      }
-    };
+  // Use global state for SgUSD balance data
+  const { 
+    balance: sgUSDBalance, 
+    balanceValue: sgUSDBalanceValue, 
+    coins: formattedCoins,
+    setBalance: setSgUSDBalance,
+    setBalanceValue: setSgUSDBalanceValue,
+    setCoins: setFormattedCoins,
+    shouldRefetch: shouldRefreshSgUSDBalance,
+    invalidateCache: invalidateSgUSDBalance
+  } = useGlobalSgUSDBalance();
+  
+  // Get the setForceRefresh function directly from the store
+  const setForceRefresh = useStore((state: any) => state.setForceRefresh);
+  
+  // Use our cached coins hook instead of direct RPC calls
+  const { 
+    coins: sgUSDCoinsData, 
+    isLoading: coinsLoading,
+    refresh: refreshCoins
+  } = useCachedCoins(
+    currentAccount?.address, 
+    `${SUI_CONFIG.PACKAGE_ID}::sg_usd::SG_USD`
+  );
+  
+  // Debounce the refresh to prevent excessive API calls
+  const debouncedRefresh = useCallback(() => {
+    // Use a timeout to prevent multiple refreshes in quick succession
+    const timeoutId = setTimeout(() => {
+      refreshCoins();
+    }, 2000); // 2 second delay
     
-    fetchSgUSDCoins();
-  }, [currentAccount, client]);
+    return () => clearTimeout(timeoutId);
+  }, [refreshCoins]);
+  
+  // Process coins data when it changes - with debouncing
+  useEffect(() => {
+    // Check if we should refresh the data based on our global state policy
+    if (shouldRefreshSgUSDBalance() || formattedCoins.length === 0) {
+      // Only process data if we have it and it's not already in our global state
+      if (sgUSDCoinsData && sgUSDCoinsData.length > 0) {
+        try {
+          // Calculate total balance
+          const totalBalance = sgUSDCoinsData.reduce(
+            (acc: bigint, coin: any) => acc + BigInt(coin.balance), 
+            BigInt(0)
+          );
+          setSgUSDBalanceValue(totalBalance);
+          
+          // Format for display
+          const formattedBalance = (Number(totalBalance) / 1_000_000_000).toFixed(2);
+          setSgUSDBalance(formattedBalance);
+          
+          // Format coins for selection
+          const formattedCoinsList = sgUSDCoinsData.map((coin: any) => ({
+            id: coin.coinObjectId,
+            balance: (Number(coin.balance) / 1_000_000_000).toFixed(2),
+            balanceValue: BigInt(coin.balance)
+          }));
+          
+          // Update global state with formatted coins
+          setFormattedCoins(formattedCoinsList);
+          
+          // Select the first coin by default if available
+          if (formattedCoinsList.length > 0 && !selectedCoinId) {
+            setSelectedCoinId(formattedCoinsList[0].id);
+          }
+          
+          console.log('Updated global SgUSD state with fresh data');
+        } catch (error) {
+          console.error('Error processing sgUSD coins:', error);
+          toast.error('Failed to process your sgUSD balance');
+        }
+      }
+    } else {
+      console.log('Using cached SgUSD data from global store');
+      // If we have coins in the global state but no selected coin, select one
+      if (formattedCoins.length > 0 && !selectedCoinId) {
+        setSelectedCoinId(formattedCoins[0].id);
+      }
+    }
+  }, [sgUSDCoinsData, selectedCoinId, shouldRefreshSgUSDBalance, formattedCoins.length]);
   
   // Format balance with proper decimals
   const formatBalance = (balance: bigint): string => {
@@ -76,15 +120,10 @@ export default function DonateWithSgUSD({ campaignId, campaignName, onDonationCo
     return `${integerPart}.${decimalPart.substring(0, 2)}`;
   };
   
-  // Handle sgUSD donation
-  const handleSgUSDDonation = async () => {
+  // Handle donation with sgUSD
+  const handleDonate = async () => {
     if (!currentAccount) {
       toast.error('Please connect your wallet first');
-      return;
-    }
-    
-    if (!sgUSDAmount || parseFloat(sgUSDAmount) <= 0) {
-      toast.error('Please enter a valid amount');
       return;
     }
     
@@ -93,15 +132,34 @@ export default function DonateWithSgUSD({ campaignId, campaignName, onDonationCo
       return;
     }
     
+    const amountValue = parseFloat(sgUSDAmount);
+    if (isNaN(amountValue) || amountValue <= 0) {
+      toast.error('Please enter a valid amount');
+      return;
+    }
+    
+    // Convert to smallest units (9 decimals)
+    const amountInUnits = (amountValue * 1_000_000_000).toString();
+    
+    // Check if selected coin has enough balance
+    const selectedCoin = sgUSDCoinsData.find((coin: any) => coin.coinObjectId === selectedCoinId);
+    if (!selectedCoin) {
+      toast.error('Selected coin not found');
+      return;
+    }
+    
+    if (BigInt(selectedCoin.balance) < BigInt(amountInUnits)) {
+      const formattedBalance = (Number(selectedCoin.balance) / 1_000_000_000).toFixed(2);
+      toast.error(`Not enough balance in selected coin. Available: ${formattedBalance} sgUSD`);
+      return;
+    }
+    
     try {
       setIsLoading(true);
       toast.loading('Processing sgUSD donation...', { id: 'donation' });
       
-      // Convert sgUSD to smallest unit (1 sgUSD = 10^9 units)
-      const amountUnits = BigInt(Math.floor(parseFloat(sgUSDAmount) * 1_000_000_000));
-      
       // Execute the donation transaction
-      const result = await donateSgUSD(campaignId, selectedCoinId, Number(amountUnits), false);
+      const result = await donateSgUSD(campaignId, selectedCoinId, Number(amountInUnits), '', false);
       
       toast.success('sgUSD donation successful!', { id: 'donation' });
       
@@ -177,34 +235,12 @@ export default function DonateWithSgUSD({ campaignId, campaignName, onDonationCo
       });
       
       // Refresh balance after a short delay to allow transaction to process
-      setTimeout(async () => {
-        try {
-          const coins = await client.getCoins({
-            owner: currentAccount.address,
-            coinType: `${SUI_CONFIG.PACKAGE_ID}::sg_usd::SG_USD`
-          });
-          
-          const total = coins.data.reduce((acc, coin) => acc + BigInt(coin.balance), BigInt(0));
-          setSgUSDBalanceValue(total);
-          setSgUSDBalance(formatBalance(total));
-          
-          // Format coins with balance
-          const formattedCoins = coins.data.map(coin => ({
-            id: coin.coinObjectId,
-            balance: formatBalance(BigInt(coin.balance)),
-            balanceValue: BigInt(coin.balance)
-          }));
-          
-          setSgUSDCoins(formattedCoins);
-          
-          // Select the first coin by default if available
-          if (formattedCoins.length > 0) {
-            setSelectedCoinId(formattedCoins[0].id);
-          }
-        } catch (err) {
-          console.error('Error refreshing balance:', err);
-        }
-      }, 5000);
+      setTimeout(() => {
+        // Use our debounced refresh function instead of direct API calls
+        debouncedRefresh();
+        // Force refresh by setting the global flag to true
+        setForceRefresh(true);
+      }, 5000); // Increased to 5 seconds to give blockchain more time to process
     } catch (error) {
       console.error('Error minting sgUSD:', error);
       toast.error('Failed to mint sgUSD tokens');
@@ -232,33 +268,13 @@ export default function DonateWithSgUSD({ campaignId, campaignName, onDonationCo
         <div className="space-y-6">
           <div className="space-y-2">
             <Label htmlFor="sgUSDAmount">Amount (sgUSD)</Label>
-            <Input
-              id="sgUSDAmount"
-              type="number"
-              min="0.01"
-              step="1"
-              value={sgUSDAmount}
-              onChange={(e: ChangeEvent<HTMLInputElement>) => setSgUSDAmount(e.target.value)}
-              placeholder="Enter amount in sgUSD"
-            />
           </div>
-          
-          <div className="text-amber-600 text-sm">
-            You don't have any sgUSD tokens. Mint some from the Tokens page first.
-          </div>
-          
-          <Button 
-            className="w-full bg-black hover:bg-gray-800 text-white" 
-            disabled={isLoading}
-          >
-            Connect Wallet
-          </Button>
         </div>
       );
     }
-    
-    // State 2: Wallet connected but insufficient balance
-    if (sgUSDCoins.length === 0) {
+
+    // Check if user has any sgUSD tokens
+    if (formattedCoins.length === 0) {
       // No sgUSD tokens at all
       return (
         <div className="space-y-6">
@@ -369,7 +385,7 @@ export default function DonateWithSgUSD({ campaignId, campaignName, onDonationCo
         
         <Button 
           className="w-full bg-black hover:bg-gray-800 text-white" 
-          onClick={handleSgUSDDonation}
+          onClick={handleDonate}
           disabled={isLoading}
         >
           {isLoading ? (

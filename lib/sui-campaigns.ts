@@ -560,7 +560,7 @@ export async function getAllCampaigns(client: SuiClient): Promise<Campaign[]> {
           
           // Increased delay between batches to avoid rate limiting
           if (i + concurrencyLimit < campaignIds.length) {
-            await new Promise(resolve => setTimeout(resolve, 2000)); // 2 seconds delay
+            await new Promise(resolve => setTimeout(resolve, 5000)); // 5 seconds delay instead of 2
           }
         }
         

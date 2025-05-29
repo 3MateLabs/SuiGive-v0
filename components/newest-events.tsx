@@ -6,7 +6,7 @@ import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import AnimationWrapper from "./animation-wrapper"
 import { useSuiCampaigns } from "@/hooks/useSuiCampaigns"
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef } from "react"
 import { Campaign } from "@/lib/sui-campaigns"
 import { formatDistanceToNow, format } from "date-fns"
 import { useCampaignProgress } from "@/hooks/useCampaignProgress"
@@ -16,22 +16,35 @@ export default function NewestEvents() {
   const { campaigns, loading, error, refreshCampaigns } = useSuiCampaigns();
   const [displayCampaigns, setDisplayCampaigns] = useState<Campaign[]>([]);
 
+  // Use a ref to track if we've already fetched campaigns
+  const initialFetchDone = useRef(false);
+
   useEffect(() => {
+    // Only fetch campaigns on initial mount
+    if (initialFetchDone.current) return;
+    
     // Fetch campaigns when component mounts with retry logic
     const fetchWithRetry = async () => {
       try {
+        console.log('Initial campaign fetch on component mount');
         await refreshCampaigns();
+        initialFetchDone.current = true;
       } catch (err) {
         console.error('Error fetching campaigns in component:', err);
         // Retry after 3 seconds if there was an error
         setTimeout(() => {
-          refreshCampaigns().catch(e => console.error('Retry failed:', e));
+          refreshCampaigns()
+            .then(() => {
+              initialFetchDone.current = true;
+            })
+            .catch(e => console.error('Retry failed:', e));
         }, 3000);
       }
     };
     
     fetchWithRetry();
-  }, [refreshCampaigns]);
+    // Empty dependency array ensures this only runs once on mount
+  }, []);
 
   useEffect(() => {
     if (campaigns && campaigns.length > 0) {

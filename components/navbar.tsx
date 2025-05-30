@@ -14,7 +14,10 @@ export default function Navbar() {
     <header className="sticky top-0 z-50 bg-white border-b shadow-sm">
       <div className="w-full max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
         {/* Left: Logo */}
-        <Link href="/" className="text-2xl font-bold sui-navy-text hover:opacity-80 transition-opacity">SuiGives</Link>
+        <Link href="/" className="flex items-center gap-2 hover:opacity-90 transition-opacity">
+          <img src="/suigives-logo.svg" alt="SuiGives Logo" className="h-8 w-8" />
+          <span className="text-2xl font-bold sui-navy-text">SuiGives</span>
+        </Link>
         
         {/* Right: Search, Create Campaign, Wallet */}
         <div className="flex items-center space-x-5">

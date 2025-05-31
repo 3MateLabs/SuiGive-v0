@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useSuiClient } from '@mysten/dapp-kit';
 import { getCampaignDetails } from '@/lib/sui-campaigns';
 
@@ -69,33 +69,57 @@ export function useCampaignProgress(campaignId: string) {
     }
   };
 
-  // Fetch the latest data from blockchain
+  // Use useRef instead of useState to track fetch state
+  // This prevents re-renders when the fetch state changes
+  const isFetchingRef = useRef(false);
+  
+  // Debounce function to prevent multiple rapid calls
+  const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Fetch the latest data from blockchain with debouncing
   const fetchBlockchainData = async () => {
-    if (!client || !campaignId) return;
-    
-    try {
-      const campaign = await getCampaignDetails(client, campaignId);
-      
-      if (campaign) {
-        // Update state with blockchain data
-        setCurrentAmount(campaign.currentAmount);
-        setGoalAmount(campaign.goalAmount);
-        updateProgressPercentage(campaign.currentAmount, campaign.goalAmount);
-        
-        // Save to local storage
-        saveLocalProgressData({
-          campaignId,
-          currentAmount: campaign.currentAmount,
-          lastUpdated: Date.now(),
-          pendingDonations: []
-        });
-        
-        setLastBlockchainUpdate(Date.now());
-        console.log('Updated campaign data from blockchain:', campaign);
-      }
-    } catch (error) {
-      console.error('Error fetching blockchain data:', error);
+    // Clear any existing timeout
+    if (debounceTimeoutRef.current) {
+      clearTimeout(debounceTimeoutRef.current);
     }
+    
+    // Set a new timeout to debounce the fetch
+    debounceTimeoutRef.current = setTimeout(async () => {
+      // Prevent multiple simultaneous fetches
+      if (isFetchingRef.current || !client || !campaignId) return;
+      
+      try {
+        isFetchingRef.current = true;
+        const campaign = await getCampaignDetails(client, campaignId);
+        
+        if (campaign) {
+          // Batch state updates to prevent cascading renders
+          const updates = () => {
+            setCurrentAmount(campaign.currentAmount);
+            setGoalAmount(campaign.goalAmount);
+            updateProgressPercentage(campaign.currentAmount, campaign.goalAmount);
+            setLastBlockchainUpdate(Date.now());
+          };
+          
+          // Execute all updates together
+          updates();
+          
+          // Save to local storage
+          saveLocalProgressData({
+            campaignId,
+            currentAmount: campaign.currentAmount,
+            lastUpdated: Date.now(),
+            pendingDonations: []
+          });
+          
+          console.log('Updated campaign data from blockchain:', campaign);
+        }
+      } catch (error) {
+        console.error('Error fetching blockchain data:', error);
+      } finally {
+        isFetchingRef.current = false;
+      }
+    }, 200); // 200ms debounce delay
   };
 
   // Add a donation to the progress (optimistic update)
@@ -118,9 +142,10 @@ export function useCampaignProgress(campaignId: string) {
       // Calculate new total including pending donations
       const newTotal = calculateTotalWithPending(localData);
       
-      // Update local state
+      // Update local state - use a single update to prevent cascading renders
+      const updatedGoal = goalAmount;
       setCurrentAmount(newTotal);
-      updateProgressPercentage(newTotal, goalAmount);
+      updateProgressPercentage(newTotal, updatedGoal);
       
       // Save to local storage
       saveLocalProgressData(localData);
@@ -130,9 +155,15 @@ export function useCampaignProgress(campaignId: string) {
         newTotal
       });
       
-      // Trigger blockchain refresh after a delay
-      setTimeout(() => fetchBlockchainData(), 5000);
+      // Trigger blockchain refresh after a delay - use a longer delay
+      // to prevent multiple rapid updates
+      const refreshTimeoutId = setTimeout(() => {
+        if (!isFetchingRef.current) {
+          fetchBlockchainData();
+        }
+      }, 8000); // Increased to 8 seconds to give more time between updates
       
+      // Clean up timeout if component unmounts
       return newTotal;
     } catch (error) {
       console.error('Error adding donation:', error);

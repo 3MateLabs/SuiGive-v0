@@ -170,9 +170,13 @@ export default function DonateWithSgUSD({ campaignId, campaignName, onDonationCo
       // Calculate donation amount in blockchain units for the callback
       const donationAmountInUnits = Math.floor(parseFloat(sgUSDAmount) * 1_000_000_000).toString();
       
-      // Call the callback with the donation amount information
+      // Use setTimeout to prevent React update loops when calling the callback
+      // This breaks the synchronous update cycle that can cause infinite loops
       if (onDonationComplete) {
-        onDonationComplete(parseFloat(sgUSDAmount), donationAmountInUnits);
+        // Small delay to ensure we don't trigger React update loops
+        setTimeout(() => {
+          onDonationComplete(parseFloat(sgUSDAmount), donationAmountInUnits);
+        }, 50);
       }
     } catch (error: any) {
       console.error('Error donating with sgUSD:', error);

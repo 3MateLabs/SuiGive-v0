@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useCurrentWallet } from '@mysten/dapp-kit';
 import { useSuiClient } from '@mysten/dapp-kit';
 import { 
@@ -108,15 +108,25 @@ export function useSuiCampaigns() {
     return [];
   };
 
+  // Use refs to track loading state to prevent unnecessary re-renders
+  const loadingRef = useRef(false);
+  
+  // Track in-flight requests to prevent duplicate requests
+  const pendingRequests = useRef<Record<string, Promise<any>>>({});
+  
   const handleContractCall = async <T,>(fn: Function, ...args: any[]): Promise<T> => {
+    // Update both ref and state for loading
+    loadingRef.current = true;
     setLoading(true);
     setError(null);
     try {
       const result = await fn(...args);
+      loadingRef.current = false;
       setLoading(false);
       return result as T;
     } catch (err: any) {
       setError(err.message || 'An error occurred');
+      loadingRef.current = false;
       setLoading(false);
       throw err;
     }
@@ -217,21 +227,71 @@ export function useSuiCampaigns() {
         throw err;
       }
     },
-    getCampaignDetails: async (campaignId: string) => {
+    // Memoize getCampaignDetails to prevent recreation on each render
+    getCampaignDetails: useCallback(async (campaignId: string) => {
+      // Create a request key for deduplication
+      const requestKey = `campaign-${campaignId}`;
+      
+      // If there's already a request in flight for this campaign, return that promise
+      // This prevents duplicate requests for the same campaign
+      if (requestKey in pendingRequests.current) {
+        console.log(`Reusing existing request for campaign ${campaignId}`);
+        return pendingRequests.current[requestKey];
+      }
+      
+      console.log(`Creating new request for campaign ${campaignId}`);
+      
       try {
-        return await handleContractCall(getCampaignDetails, client, campaignId);
+        // Create a new promise for this request and store it
+        const promise = handleContractCall(getCampaignDetails, client, campaignId);
+        pendingRequests.current[requestKey] = promise;
+        
+        // Wait for the result
+        const result = await promise;
+        
+        // Clean up after request completes
+        setTimeout(() => {
+          delete pendingRequests.current[requestKey];
+        }, 100);
+        
+        return result;
       } catch (err) {
-        console.error('Error getting campaign details:', err);
+        console.error(`Error getting campaign details for ${campaignId}:`, err);
+        // Clean up failed request
+        delete pendingRequests.current[requestKey];
         throw err;
       }
-    },
-    isGoalReached: async (campaignId: string) => {
+    }, [client]),
+    isGoalReached: useCallback(async (campaignId: string) => {
+      // Create a request key for deduplication
+      const requestKey = `goal-${campaignId}`;
+      
+      // If there's already a request in flight for this campaign, return that promise
+      if (requestKey in pendingRequests.current) {
+        console.log(`Reusing existing goal check request for campaign ${campaignId}`);
+        return pendingRequests.current[requestKey];
+      }
+      
       try {
-        return await handleContractCall(isGoalReached, client, campaignId);
+        // Create a new promise for this request and store it
+        const promise = handleContractCall(isGoalReached, client, campaignId);
+        pendingRequests.current[requestKey] = promise;
+        
+        // Wait for the result
+        const result = await promise;
+        
+        // Clean up after request completes
+        setTimeout(() => {
+          delete pendingRequests.current[requestKey];
+        }, 100);
+        
+        return result;
       } catch (err) {
-        console.error('Error checking if goal reached:', err);
+        console.error(`Error checking if goal reached for ${campaignId}:`, err);
+        // Clean up failed request
+        delete pendingRequests.current[requestKey];
         throw err;
       }
-    }
+    }, [client]),
   };
 }

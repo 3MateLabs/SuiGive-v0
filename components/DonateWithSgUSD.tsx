@@ -1,16 +1,13 @@
 "use client";
 
 import React, { useState, useEffect, ChangeEvent, useCallback } from "react";
-import {
-  useCurrentAccount,
-  useSuiClient,
-  useSignAndExecuteTransaction,
-} from "@mysten/dapp-kit";
-import { Transaction } from "@mysten/sui/transactions";
-import { SUI_CONFIG } from "@/lib/sui-config";
-import { useSuiCampaigns } from "@/hooks/useSuiCampaigns";
-import { useCachedCoins } from "@/hooks/useCachedSuiData";
-import { useGlobalSgUSDBalance, useStore } from "@/lib/store";
+import { useCurrentAccount, useSuiClient, useSignAndExecuteTransaction } from '@mysten/dapp-kit';
+import { Transaction } from '@mysten/sui/transactions';
+import { SUI_CONFIG } from '@/lib/sui-config';
+import { useSuiCampaigns } from '@/hooks/useSuiCampaigns';
+import { useCachedCoins } from '@/hooks/useCachedSuiData';
+import { useGlobalSgUSDBalance, useStore } from '@/lib/store';
+import { useCampaignProgress } from '@/hooks/useCampaignProgress';
 import { toast } from "react-hot-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -40,6 +37,13 @@ export default function DonateWithSgUSD({
   const suiClient = useSuiClient();
   const { mutate: signAndExecute } = useSignAndExecuteTransaction();
   const { donateSgUSD, loading } = useSuiCampaigns();
+  const { currentAmount, goalAmount, progress } = useCampaignProgress(campaignId);
+
+  // State for alert dialog when campaign is fully funded
+  const [showFundedAlert, setShowFundedAlert] = useState(false);
+
+  // Check if campaign is fully funded
+  const isCampaignFullyFunded = progress >= 100;
 
   const [sgUSDAmount, setSgUSDAmount] = useState<string>("10");
   const [selectedCoinId, setSelectedCoinId] = useState<string>("");
@@ -143,8 +147,22 @@ export default function DonateWithSgUSD({
     return `${integerPart}.${decimalPart.substring(0, 2)}`;
   };
 
-  // Handle donation with sgUSD
-  const handleDonate = async () => {
+  // Pre-donation check and alert for fully funded campaigns
+  const handlePreDonate = () => {
+    if (!currentAccount) {
+      toast.error("Please connect your wallet first");
+      return;
+    }
+
+    if (isCampaignFullyFunded) {
+      setShowFundedAlert(true);
+    } else {
+      processDonation();
+    }
+  };
+
+  // Handle the actual donation transaction
+  const processDonation = async () => {
     if (!currentAccount) {
       toast.error("Please connect your wallet first");
       return;
@@ -492,7 +510,7 @@ export default function DonateWithSgUSD({
 
         <Button
           className="w-full bg-black hover:bg-gray-800 text-white"
-          onClick={handleDonate}
+          onClick={handlePreDonate}
           disabled={isLoading}
         >
           {isLoading ? (
@@ -520,7 +538,31 @@ export default function DonateWithSgUSD({
 
         <CardContent className="pt-4">{renderDonationUI()}</CardContent>
       </Card>
-      
+
+      {/* Alert Dialog for Fully Funded Campaign */}
+      <AlertDialog open={showFundedAlert} onOpenChange={setShowFundedAlert}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Campaign Fully Funded</AlertDialogTitle>
+            <AlertDialogDescription>
+              <p className="mb-2">
+                This campaign has already reached its funding goal!
+              </p>
+              <p className="mb-2">
+                Any additional donations will go to the community and contribute to your GiveRep leaderboard score.
+              </p>
+              <p>
+                Would you still like to donate {sgUSDAmount} sgUSD?
+              </p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={processDonation}>Yes, Donate Anyway</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* NFT Receipt Modal */}
       <NFTReceiptModal 
         isOpen={showNFTModal}

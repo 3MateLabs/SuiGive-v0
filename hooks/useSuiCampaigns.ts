@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useCurrentWallet } from '@mysten/dapp-kit';
 import { useSuiClient } from '@mysten/dapp-kit';
 import { 
@@ -10,21 +10,25 @@ import {
   Campaign
 } from '../lib/sui-campaigns';
 import { useTransactionExecution } from './useTransactionExecution';
+import { useGlobalCampaigns, useStore } from '../lib/store';
 
 // No mock implementations - using real blockchain calls only
 
 export function useSuiCampaigns() {
   const currentWallet = useCurrentWallet();
   const client = useSuiClient();
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   
-  // Add cache for campaign data to prevent unnecessary refetches
-  const [campaignCache, setCampaignCache] = useState<{
-    timestamp: number;
-    data: Campaign[];
-  } | null>(null);
+  // Use our global state store instead of local state
+  const { 
+    campaigns, 
+    isLoading: loading, 
+    error, 
+    setCampaigns, 
+    setLoading, 
+    setError,
+    shouldRefetch,
+    invalidateCache
+  } = useGlobalCampaigns();
   
   // Use our transaction execution hook
   const { 
@@ -38,21 +42,20 @@ export function useSuiCampaigns() {
 
   // Load all campaigns with retry logic and caching
   const fetchCampaigns = async (forceRefresh = false) => {
-    // Check cache first if not forcing refresh
-    const currentTime = Date.now();
-    if (!forceRefresh && campaignCache && (currentTime - campaignCache.timestamp < 120000)) {
-      // Use cached data if it's less than 2 minutes old
-      console.log('Using cached campaign data');
-      return campaignCache.data;
+    // Check global state cache first if not forcing refresh
+    if (!forceRefresh && !shouldRefetch()) {
+      // Use cached data if it's still valid according to our cache policy
+      console.log('Using cached campaign data from global store');
+      return campaigns;
     }
     
     setLoading(true);
     setError(null);
     console.log('Starting campaign fetch...');
     
-    // Retry configuration
-    const maxRetries = 3;
-    const retryDelay = 1000; // 1 second
+    // Retry configuration - optimized for faster response
+    const maxRetries = 2; // Reduced from 3 to 2
+    const retryDelay = 500; // Reduced from 1000ms to 500ms
     
     for (let attempt = 0; attempt < maxRetries; attempt++) {
       try {
@@ -72,57 +75,124 @@ export function useSuiCampaigns() {
         
         // Make sure we have valid campaign data before updating state
         if (Array.isArray(allCampaigns) && allCampaigns.length > 0) {
-          // Update state with the fetched campaigns
+          // Update global state with the fetched campaigns
           setCampaigns(allCampaigns);
           
-          // Update cache with timestamp
-          setCampaignCache({
-            timestamp: currentTime,
-            data: allCampaigns
-          });
-        }
-        
-        setLoading(false);
-        return allCampaigns;
-      } catch (err: any) {
-        console.error(`Error loading campaigns (attempt ${attempt + 1}/${maxRetries}):`, err);
-        
-        // If we've tried the maximum number of times, show error
-        if (attempt === maxRetries - 1) {
-          const errorMessage = err.message || 'Unknown error';
-          console.error('Final error after all retries:', errorMessage);
-          setError(`Failed to load campaigns: ${errorMessage}`);
           setLoading(false);
-          
-          // Return cached data if available, otherwise empty array
-          return campaignCache?.data || [];
+          console.log(`Successfully fetched ${allCampaigns.length} campaigns`);
+          return allCampaigns;
+        } else {
+          // Handle empty or invalid response
+          console.warn('No campaigns found or invalid response format');
+          setCampaigns([]);
+          setLoading(false);
+          return [];
+        }
+      } catch (error: any) {
+        console.error(`Error fetching campaigns (attempt ${attempt + 1}):`, error.message || error);
+        
+        // If this is the last attempt, update the error state
+        if (attempt === maxRetries - 1) {
+          setError(error.message || 'Failed to fetch campaigns');
+          setLoading(false);
+          return [];
         }
         
         // Otherwise wait before retrying
-        const waitTime = retryDelay * Math.pow(2, attempt);
-        console.log(`Waiting ${waitTime}ms before retry ${attempt + 2}...`);
-        await new Promise(resolve => setTimeout(resolve, waitTime));
+        await new Promise(resolve => setTimeout(resolve, retryDelay * Math.pow(2, attempt)));
       }
     }
     
-    // This should never be reached, but just in case
-    setError('Unexpected error loading campaigns');
-    setLoading(false);
-    return campaignCache?.data || [];
+    // This should never be reached due to the return in the last iteration of the loop
+    // but TypeScript needs it for type safety
+    return [];
   };
 
+  // Use refs to track loading state to prevent unnecessary re-renders
+  const loadingRef = useRef(false);
+  
+  // Track in-flight requests to prevent duplicate requests
+  const pendingRequests = useRef<Record<string, Promise<any>>>({});
+  
   const handleContractCall = async <T,>(fn: Function, ...args: any[]): Promise<T> => {
+    // Update both ref and state for loading
+    loadingRef.current = true;
     setLoading(true);
     setError(null);
     try {
       const result = await fn(...args);
+      loadingRef.current = false;
       setLoading(false);
       return result as T;
     } catch (err: any) {
       setError(err.message || 'An error occurred');
+      loadingRef.current = false;
       setLoading(false);
       throw err;
     }
+  };
+
+  // Create a new campaign
+  const createCampaign = async (name: string, description: string, imageUrl: string, goalAmount: number, deadline: number, category: string) => {
+    const result = await handleContractCall<any>(
+      executeCreateCampaign,
+      name,
+      description,
+      imageUrl,
+      goalAmount,
+      deadline,
+      category
+    );
+    
+    // Force refresh after campaign creation
+    if (result) {
+      invalidateCache();
+      // Also set the global force refresh flag
+      useStore.getState().setForceRefresh(true);
+    }
+    
+    return result;
+  };
+
+  // Handle donation with SUI tokens
+  const donate = async (campaignId: string, amount: number, message: string = '', isAnonymous: boolean = false) => {
+    const result = await handleContractCall<any>(
+      executeDonate,
+      campaignId,
+      amount,
+      message,
+      isAnonymous
+    );
+    
+    // Force refresh after donation
+    if (result) {
+      invalidateCache();
+      // Also set the global force refresh flag
+      useStore.getState().setForceRefresh(true);
+    }
+    
+    return result;
+  };
+
+  // Handle donation with sgUSD tokens
+  const donateSgUSD = async (campaignId: string, coinObjectId: string, amount: number, message: string = '', isAnonymous: boolean = false) => {
+    const result = await handleContractCall<any>(
+      executeDonateSgUSD,
+      campaignId,
+      coinObjectId,
+      amount,
+      message,
+      isAnonymous
+    );
+    
+    // Force refresh after donation
+    if (result) {
+      invalidateCache();
+      // Also set the global force refresh flag
+      useStore.getState().setForceRefresh(true);
+    }
+    
+    return result;
   };
 
   return {
@@ -132,86 +202,9 @@ export function useSuiCampaigns() {
     connected: !!currentWallet,
     wallet: currentWallet,
     refreshCampaigns: fetchCampaigns,
-    createCampaign: async (
-      name: string,
-      description: string,
-      imageUrl: string,
-      goalAmount: number,
-      deadline: number,
-      category: string
-    ) => {
-      // Check if wallet is connected
-      if (!isWalletConnected) {
-        setError('Wallet not connected. Please connect your wallet first.');
-        throw new Error('Wallet not connected. Please connect your wallet first.');
-      }
-      
-      try {
-        setLoading(true);
-        const result = await executeCreateCampaign(
-          name, 
-          description, 
-          imageUrl, 
-          goalAmount, 
-          deadline, 
-          category
-        );
-        setLoading(false);
-        return result;
-      } catch (err: any) {
-        setLoading(false);
-        setError(err.message || 'Error during campaign creation');
-        console.error('Error during campaign creation:', err);
-        throw err;
-      }
-    },
-    donate: async (
-      campaignId: string,
-      amount: number,
-      isAnonymous: boolean = false
-    ) => {
-      // Check if wallet is connected
-      if (!isWalletConnected) {
-        setError('Wallet not connected. Please connect your wallet first.');
-        throw new Error('Wallet not connected. Please connect your wallet first.');
-      }
-      
-      try {
-        setLoading(true);
-        const result = await executeDonate(campaignId, amount, isAnonymous);
-        setLoading(false);
-        return result;
-      } catch (err: any) {
-        setLoading(false);
-        setError(err.message || 'Error during donation');
-        console.error('Error during donation:', err);
-        throw err;
-      }
-    },
-    donateSgUSD: async (
-      campaignId: string,
-      coinObjectId: string,
-      amount: number,
-      isAnonymous: boolean = false
-    ) => {
-      // Check if wallet is connected
-      if (!isWalletConnected) {
-        setError('Wallet not connected. Please connect your wallet first.');
-        throw new Error('Wallet not connected. Please connect your wallet first.');
-      }
-      
-      try {
-        setLoading(true);
-        const result = await executeDonateSgUSD(campaignId, coinObjectId, amount, isAnonymous);
-        setLoading(false);
-        return result;
-      } catch (err: any) {
-        setLoading(false);
-        setError(err.message || 'Error during sgUSD donation');
-        console.error('Error during sgUSD donation:', err);
-        throw err;
-      }
-    },
+    createCampaign,
+    donate,
+    donateSgUSD,
     withdrawFunds: async (
       campaignId: string,
       capabilityId: string
@@ -234,21 +227,71 @@ export function useSuiCampaigns() {
         throw err;
       }
     },
-    getCampaignDetails: async (campaignId: string) => {
+    // Memoize getCampaignDetails to prevent recreation on each render
+    getCampaignDetails: useCallback(async (campaignId: string) => {
+      // Create a request key for deduplication
+      const requestKey = `campaign-${campaignId}`;
+      
+      // If there's already a request in flight for this campaign, return that promise
+      // This prevents duplicate requests for the same campaign
+      if (requestKey in pendingRequests.current) {
+        console.log(`Reusing existing request for campaign ${campaignId}`);
+        return pendingRequests.current[requestKey];
+      }
+      
+      console.log(`Creating new request for campaign ${campaignId}`);
+      
       try {
-        return await handleContractCall(getCampaignDetails, client, campaignId);
+        // Create a new promise for this request and store it
+        const promise = handleContractCall(getCampaignDetails, client, campaignId);
+        pendingRequests.current[requestKey] = promise;
+        
+        // Wait for the result
+        const result = await promise;
+        
+        // Clean up after request completes
+        setTimeout(() => {
+          delete pendingRequests.current[requestKey];
+        }, 100);
+        
+        return result;
       } catch (err) {
-        console.error('Error getting campaign details:', err);
+        console.error(`Error getting campaign details for ${campaignId}:`, err);
+        // Clean up failed request
+        delete pendingRequests.current[requestKey];
         throw err;
       }
-    },
-    isGoalReached: async (campaignId: string) => {
+    }, [client]),
+    isGoalReached: useCallback(async (campaignId: string) => {
+      // Create a request key for deduplication
+      const requestKey = `goal-${campaignId}`;
+      
+      // If there's already a request in flight for this campaign, return that promise
+      if (requestKey in pendingRequests.current) {
+        console.log(`Reusing existing goal check request for campaign ${campaignId}`);
+        return pendingRequests.current[requestKey];
+      }
+      
       try {
-        return await handleContractCall(isGoalReached, client, campaignId);
+        // Create a new promise for this request and store it
+        const promise = handleContractCall(isGoalReached, client, campaignId);
+        pendingRequests.current[requestKey] = promise;
+        
+        // Wait for the result
+        const result = await promise;
+        
+        // Clean up after request completes
+        setTimeout(() => {
+          delete pendingRequests.current[requestKey];
+        }, 100);
+        
+        return result;
       } catch (err) {
-        console.error('Error checking if goal reached:', err);
+        console.error(`Error checking if goal reached for ${campaignId}:`, err);
+        // Clean up failed request
+        delete pendingRequests.current[requestKey];
         throw err;
       }
-    }
+    }, [client]),
   };
 }

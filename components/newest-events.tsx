@@ -186,8 +186,11 @@ export default function NewestEvents() {
     },
   ]
 
+  // Determine if the loading spinner should be shown
+  const showLoadingSpinner = loading;
+
   return (
-    <section id="newest-events" className={`flex flex-col px-4 sm:px-6 lg:px-8 bg-white pb-12 ${loading ? 'pt-20' : 'pt-24'}`}>
+    <section id="newest-events" className={`flex flex-col px-4 sm:px-6 lg:px-8 bg-white pb-12 ${showLoadingSpinner ? 'pt-20' : 'pt-24'}`}>
       <div className="max-w-[90%] mx-auto w-full">
         <div className="flex justify-between items-center mb-12">
           <AnimationWrapper animationClass="fade-right">
@@ -204,7 +207,7 @@ export default function NewestEvents() {
         </div>
 
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {loading ? (
+          {showLoadingSpinner ? (
             <div className="col-span-3 text-center py-12">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-sui-navy mx-auto mb-4"></div>
               <p>Loading campaigns from the blockchain...</p>

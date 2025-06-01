@@ -50,99 +50,56 @@ export default function NewestEvents() {
               console.error('Retry failed:', e);
               setIsFetching(false); // Stop loading even if failed
             });
-        }, 2000); // Reduced retry time
+        }, 2000);
       }
     };
     
     fetchWithRetry();
-    // Empty dependency array ensures this only runs once on mount
-  }, []);  // Remove refreshCampaigns from dependency array to prevent infinite loop
+  }, []);
 
+  // Sort campaigns by creation date (newest first) and limit to 3
   useEffect(() => {
-    if (campaigns && campaigns.length > 0) {
-      // Sort campaigns by creation date (newest first) and take the first 3
+    if (campaigns.length > 0) {
+      // Sort by creation date (newest first)
       const sorted = [...campaigns].sort((a, b) => {
         return Number(b.createdAt) - Number(a.createdAt);
-      }).slice(0, 3);
+      });
       
-      setDisplayCampaigns(sorted);
+      // Take the first 3 campaigns
+      const limited = sorted.slice(0, 3);
+      
+      // Update state with sorted and limited campaigns
+      setDisplayCampaigns(limited);
+      console.log('Updated display campaigns:', limited.length);
     }
   }, [campaigns]);
   
-  // We'll use a map to store campaign progress data for each campaign
-  const [campaignProgressData, setCampaignProgressData] = useState<{[id: string]: {
-    loading: boolean;
-    progress: number;
-    currentAmount: string;
-    goalAmount: string;
-    currentAmountFormatted: string;
-    goalAmountFormatted: string;
-    lastBlockchainUpdate: number;
-  }}>({});
+  // Track which campaigns are currently being refreshed
+  const [refreshingCampaigns, setRefreshingCampaigns] = useState<{[id: string]: boolean}>({});
   
-  // Function to refresh campaign data from the blockchain
+  // Function to refresh a specific campaign's data
   const refreshCampaignProgress = async (campaignId: string) => {
-    // Mark this campaign as loading
-    setCampaignProgressData(prev => ({
+    // Mark this campaign as refreshing
+    setRefreshingCampaigns(prev => ({
       ...prev,
-      [campaignId]: {
-        ...prev[campaignId],
-        loading: true
-      }
+      [campaignId]: true
     }));
     
     try {
-      // Get the campaign from our list
-      const campaign = displayCampaigns.find(c => c.id === campaignId);
-      if (!campaign) return;
-      
-      // Refresh the campaign data from the blockchain
+      // Refresh all campaigns data from the blockchain
       await refreshCampaigns();
-      
-      // Update the progress data with the refreshed campaign data
-      // Note: The refreshCampaigns function will update the campaigns state
-      // which will trigger the useEffect that updates campaignProgressData
-      
       toast.success('Campaign data refreshed!');
     } catch (error) {
       console.error('Error refreshing campaign progress:', error);
       toast.error('Failed to refresh campaign data');
-      
-      // Mark as not loading even if there was an error
-      setCampaignProgressData(prev => ({
+    } finally {
+      // Mark as not refreshing
+      setRefreshingCampaigns(prev => ({
         ...prev,
-        [campaignId]: {
-          ...prev[campaignId],
-          loading: false
-        }
+        [campaignId]: false
       }));
     }
   };
-  
-  // Initialize progress data for each campaign
-  useEffect(() => {
-    if (displayCampaigns.length > 0) {
-      const newProgressData: {[id: string]: any} = {};
-      
-      // Create progress data for each campaign
-      displayCampaigns.forEach(campaign => {
-        // Calculate initial progress for this campaign
-        const progress = calculateInitialProgress(campaign.currentAmount, campaign.goalAmount);
-        
-        newProgressData[campaign.id] = {
-          loading: false,
-          progress: progress,
-          currentAmount: campaign.currentAmount,
-          goalAmount: campaign.goalAmount,
-          currentAmountFormatted: formatAmount(campaign.currentAmount),
-          goalAmountFormatted: formatAmount(campaign.goalAmount),
-          lastBlockchainUpdate: Date.now()
-        };
-      });
-      
-      setCampaignProgressData(newProgressData);
-    }
-  }, [displayCampaigns]);
   
   // Helper function to format amount for display (convert from smallest units to sgUSD)
   const formatAmountValue = (amount?: string): number => {
@@ -156,42 +113,63 @@ export default function NewestEvents() {
     }
   };
   
-  // Helper function to calculate initial progress percentage
-  const calculateInitialProgress = (current: string, goal: string) => {
-    try {
-      // Use the same formatting logic as the displayed amount for consistency
-      // This ensures the gauge matches exactly what's shown in the UI
-      const currentFormatted = formatAmountValue(current);
-      const goalFormatted = formatAmountValue(goal);
-      
-      if (goalFormatted === 0) return 0;
-      
-      // If the formatted amount would display as 0.00, set progress to 0
-      if (currentFormatted < 0.01) {
-        console.log('Current amount too small, setting progress to 0');
-        return 0;
-      }
-      
-      // Calculate percentage using the formatted values (limited to 100%)
-      const percentage = Math.floor((currentFormatted * 100) / goalFormatted);
-      console.log('Progress calculation:', { current: currentFormatted, goal: goalFormatted, percentage });
-      return Math.min(percentage, 100);
-    } catch (error) {
-      console.error('Error calculating progress:', error);
-      return 0;
-    }
-  };
-  
-  // Helper function to format amount for display
-  const formatAmount = (amount: string): string => {
-    try {
-      const amountBigInt = BigInt(amount);
-      return (Number(amountBigInt) / 1_000_000_000).toFixed(2);
-    } catch (error) {
-      console.error('Error formatting amount:', error);
-      return '0.00';
-    }
-  };
+// Campaign Progress Bar component that uses the useCampaignProgress hook
+function CampaignProgressBar({ campaignId, isRefreshing, onRefresh }: { campaignId: string, isRefreshing?: boolean, onRefresh?: () => void }) {
+  // Use the campaign progress hook to get sgUSD values
+  const {
+    loading,
+    progress,
+    currentAmountFormatted,
+    goalAmountFormatted,
+    refreshData
+  } = useCampaignProgress(campaignId);
+
+  return (
+    <>
+      <div className="flex flex-wrap justify-between text-sm mb-1">
+        <span className="font-medium text-sui-navy">{progress}% Funded</span>
+        <div className="flex items-center">
+          <span className="text-gray-700">Goal: <span className="font-medium text-blue-500">{goalAmountFormatted}</span> sgUSD</span>
+          {onRefresh && (
+            <button 
+              onClick={onRefresh}
+              className="ml-2 text-gray-500 hover:text-sui-navy transition-colors" 
+              disabled={isRefreshing || loading}
+            >
+              <RefreshCw className="h-3 w-3" />
+            </button>
+          )}
+        </div>
+      </div>
+      <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden mt-1 mb-2">
+        <div 
+          className={`h-full bg-gradient-to-r from-green-400 to-green-500 rounded-full transition-all duration-500 ${loading ? 'animate-pulse' : ''}`}
+          style={{ width: `${progress}%` }}
+        ></div>
+      </div>
+    </>
+  );
+}
+
+// This function is now handled by the useCampaignProgress hook
+
+// Placeholder progress bar for loading state
+function PlaceholderProgressBar() {
+  return (
+    <>
+      <div className="flex flex-wrap justify-between text-sm mb-1">
+        <span className="font-medium text-sui-navy animate-pulse">0% Funded</span>
+        <span className="text-gray-700">Goal: <span className="font-medium text-blue-500">0.00</span> sgUSD</span>
+      </div>
+      <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden mt-1 mb-2">
+        <div 
+          className="h-full bg-gradient-to-r from-gray-200 to-gray-300 rounded-full animate-pulse" 
+          style={{ width: '0%' }}
+        ></div>
+      </div>
+    </>
+  );
+}
   
   // Format the timestamp to "X days ago"
   const formatTimeAgo = (timestamp: string) => {
@@ -206,37 +184,40 @@ export default function NewestEvents() {
   // Use placeholder data if no campaigns are loaded yet
   const events = displayCampaigns.length > 0 ? displayCampaigns : [
     {
-      id: '1',
+      id: 'placeholder-1',
       name: "Loading campaigns...",
       description: "Please wait while we fetch campaigns from the blockchain.",
       imageUrl: "/placeholder.svg",
       createdAt: Date.now().toString(),
       goalAmount: "10000000000", // 10 sgUSD
       currentAmount: "0",
+      currentAmountSgUSD: "0", // 0 sgUSD
       deadline: Math.floor(Date.now() / 1000 + 30 * 24 * 60 * 60).toString(), // 30 days from now in seconds
       category: "Loading",
       creator: ""
     },
     {
-      id: '2',
+      id: 'placeholder-2',
       name: "Connecting to Sui...",
       description: "We're connecting to the Sui blockchain to fetch the latest campaigns.",
       imageUrl: "/placeholder.svg",
       createdAt: Date.now().toString(),
       goalAmount: "5000000000", // 5 sgUSD
       currentAmount: "0",
+      currentAmountSgUSD: "0", // 0 sgUSD
       deadline: Math.floor(Date.now() / 1000 + 15 * 24 * 60 * 60).toString(), // 15 days from now in seconds
       category: "Loading",
       creator: ""
     },
     {
-      id: '3',
+      id: 'placeholder-3',
       name: "Almost there...",
       description: "Just a moment while we load the latest crowdfunding campaigns.",
       imageUrl: "/placeholder.svg",
       createdAt: Date.now().toString(),
       goalAmount: "3000000000", // 3 sgUSD
       currentAmount: "0",
+      currentAmountSgUSD: "0", // 0 sgUSD
       deadline: Math.floor(Date.now() / 1000 + 20 * 24 * 60 * 60).toString(), // 20 days from now in seconds
       category: "Loading",
       creator: ""
@@ -306,29 +287,14 @@ export default function NewestEvents() {
 
               <div className="p-6">
                 <div className="mb-4">
-                  {/* Use our progress hooks for consistent progress tracking */}
-                  {(() => {
-                    // Get the progress data for this campaign
-                    const progressData = campaignProgressData[campaign.id] || {
-                      progress: calculateInitialProgress(campaign.currentAmount, campaign.goalAmount),
-                      goalAmountFormatted: formatAmount(campaign.goalAmount)
-                    };
-                    
-                    return (
-                      <>
-                        <div className="flex flex-wrap justify-between text-sm mb-1">
-                          <span className="font-medium text-sui-navy">{progressData.progress}% Funded</span>
-                          <span className="text-gray-700">Goal: <span className="font-medium text-blue-500">{progressData.goalAmountFormatted}</span> sgUSD</span>
-                        </div>
-                        <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden mt-1 mb-2">
-                          <div 
-                            className="h-full bg-gradient-to-r from-green-400 to-green-500 rounded-full transition-all duration-500" 
-                            style={{ width: `${progressData.progress}%` }}
-                          ></div>
-                        </div>
-                      </>
-                    );
-                  })()}
+                  {/* Use the useCampaignProgress hook for consistent sgUSD progress tracking */}
+                  {campaign.id.startsWith('placeholder') ? (
+                    // Use a placeholder progress bar for loading state
+                    <PlaceholderProgressBar />
+                  ) : (
+                    // Use the real progress bar with sgUSD values for actual campaigns
+                    <CampaignProgressBar campaignId={campaign.id} isRefreshing={refreshingCampaigns[campaign.id]} onRefresh={() => refreshCampaignProgress(campaign.id)} />
+                  )}
                 </div>
 
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mt-4">

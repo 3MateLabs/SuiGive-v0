@@ -3,6 +3,9 @@
 @tailwind utilities;
 
 @layer base {
+  html {
+    scroll-behavior: smooth;
+  }
   :root {
     --background: 0 0% 100%;
     --foreground: 222 47% 11%;
@@ -242,6 +245,12 @@
 .fade-in {
   animation: fade-in 1s ease-out forwards;
   opacity: 0;
+}
+
+/* Grid background pattern */
+.bg-grid-pattern {
+  background-image: linear-gradient(to right, #e0e0e0 1px, transparent 1px), linear-gradient(to bottom, #e0e0e0 1px, transparent 1px);
+  background-size: 20px 20px;
 }
 
 .fade-up {

@@ -2,6 +2,7 @@
 
 import { Wallet, Upload, Users, CheckCircle } from "lucide-react"
 import AnimationWrapper from "./animation-wrapper"
+import { Button } from "@/components/ui/button"
 
 export default function HowItWorks() {
   const steps = [
@@ -32,17 +33,17 @@ export default function HowItWorks() {
   ]
 
   return (
-    <section id="how-it-works" className="min-h-screen flex flex-col justify-center px-4 sm:px-6 lg:px-8 bg-white">
+    <section id="how-it-works" className="py-16 flex flex-col justify-center px-4 sm:px-6 lg:px-8 bg-white">
       <div className="max-w-[90%] mx-auto">
         <div className="text-center mb-12">
           <AnimationWrapper
             id="how-it-works"
-            className="text-3xl md:text-4xl font-inter font-bold mb-4 sui-navy-text"
+            className="text-3xl md:text-4xl font-everett font-bold mb-4 sui-navy-text"
           >
             How It Works
           </AnimationWrapper>
 
-          <AnimationWrapper id="how-it-works" className="text-gray-600 max-w-2xl mx-auto font-inter" delay={0.2}>
+          <AnimationWrapper id="how-it-works" className="text-gray-600 max-w-2xl mx-auto font-everett" delay={0.2}>
             Our platform makes it easy to create, fund, and track projects with complete transparency and security on
             the Sui blockchain.
           </AnimationWrapper>
@@ -58,11 +59,19 @@ export default function HowItWorks() {
               delay={index * 0.15}
             >
               <div className="bg-sui-blue p-4 rounded-full mb-4">{step.icon}</div>
-              <h3 className="text-xl font-inter font-bold mb-2 sui-navy-text">{step.title}</h3>
-              <p className="text-gray-600 font-inter">{step.description}</p>
+              <h3 className="text-xl font-everett font-bold mb-2 sui-navy-text">{step.title}</h3>
+              <p className="text-gray-600 font-everett">{step.description}</p>
             </AnimationWrapper>
           ))}
         </div>
+        
+        {/* Watch Demo Video button */}
+        <div className="mt-12 text-center">
+          <Button className="rounded-full px-8 py-4 text-lg bg-sui-navy text-white hover:bg-sui-navy/90">
+            Watch Demo Video
+          </Button>
+        </div>
+
       </div>
     </section>
   )

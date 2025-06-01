@@ -53,9 +53,9 @@ export function useSuiCampaigns() {
     setError(null);
     console.log('Starting campaign fetch...');
     
-    // Retry configuration - optimized for faster response
-    const maxRetries = 2; // Reduced from 3 to 2
-    const retryDelay = 500; // Reduced from 1000ms to 500ms
+    // Retry configuration
+    const maxRetries = 3;
+    const retryDelay = 1000; // 1 second
     
     for (let attempt = 0; attempt < maxRetries; attempt++) {
       try {

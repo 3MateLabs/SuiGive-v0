@@ -19,16 +19,9 @@ export default function NewestEvents() {
   // Use a ref to track if we've already fetched campaigns
   const initialFetchDone = useRef(false);
 
-  // Track when we actually start fetching data
-  const [isFetching, setIsFetching] = useState(false);
-  
-  // Use useCallback to memoize the fetch function so it doesn't change on every render
   useEffect(() => {
     // Only fetch campaigns on initial mount
     if (initialFetchDone.current) return;
-    
-    // Immediately set fetching state to true
-    setIsFetching(true);
     
     // Fetch campaigns when component mounts with retry logic
     const fetchWithRetry = async () => {
@@ -36,140 +29,136 @@ export default function NewestEvents() {
         console.log('Initial campaign fetch on component mount');
         await refreshCampaigns();
         initialFetchDone.current = true;
-        setIsFetching(false); // Done fetching
       } catch (err) {
         console.error('Error fetching campaigns in component:', err);
-        // Retry after 2 seconds if there was an error
+        // Retry after 3 seconds if there was an error
         setTimeout(() => {
           refreshCampaigns()
             .then(() => {
               initialFetchDone.current = true;
-              setIsFetching(false); // Done fetching
             })
-            .catch(e => {
-              console.error('Retry failed:', e);
-              setIsFetching(false); // Stop loading even if failed
-            });
-        }, 2000);
+            .catch(e => console.error('Retry failed:', e));
+        }, 3000);
       }
     };
     
     fetchWithRetry();
+    // Empty dependency array ensures this only runs once on mount
   }, []);
 
-  // Sort campaigns by creation date (newest first) and limit to 3
   useEffect(() => {
-    if (campaigns.length > 0) {
-      // Sort by creation date (newest first)
+    if (campaigns && campaigns.length > 0) {
+      // Sort campaigns by creation date (newest first) and take the first 3
       const sorted = [...campaigns].sort((a, b) => {
         return Number(b.createdAt) - Number(a.createdAt);
-      });
+      }).slice(0, 3);
       
-      // Take the first 3 campaigns
-      const limited = sorted.slice(0, 3);
-      
-      // Update state with sorted and limited campaigns
-      setDisplayCampaigns(limited);
-      console.log('Updated display campaigns:', limited.length);
+      setDisplayCampaigns(sorted);
     }
   }, [campaigns]);
   
-  // Track which campaigns are currently being refreshed
-  const [refreshingCampaigns, setRefreshingCampaigns] = useState<{[id: string]: boolean}>({});
+  // We'll use a map to store campaign progress data for each campaign
+  const [campaignProgressData, setCampaignProgressData] = useState<{[id: string]: {
+    loading: boolean;
+    progress: number;
+    currentAmount: string;
+    goalAmount: string;
+    currentAmountFormatted: string;
+    goalAmountFormatted: string;
+    lastBlockchainUpdate: number;
+  }}>({});
   
-  // Function to refresh a specific campaign's data
+  // Function to refresh campaign data from the blockchain
   const refreshCampaignProgress = async (campaignId: string) => {
-    // Mark this campaign as refreshing
-    setRefreshingCampaigns(prev => ({
+    // Mark this campaign as loading
+    setCampaignProgressData(prev => ({
       ...prev,
-      [campaignId]: true
+      [campaignId]: {
+        ...prev[campaignId],
+        loading: true
+      }
     }));
     
     try {
-      // Refresh all campaigns data from the blockchain
+      // Get the campaign from our list
+      const campaign = displayCampaigns.find(c => c.id === campaignId);
+      if (!campaign) return;
+      
+      // Refresh the campaign data from the blockchain
       await refreshCampaigns();
+      
+      // Update the progress data with the refreshed campaign data
+      // Note: The refreshCampaigns function will update the campaigns state
+      // which will trigger the useEffect that updates campaignProgressData
+      
       toast.success('Campaign data refreshed!');
     } catch (error) {
       console.error('Error refreshing campaign progress:', error);
       toast.error('Failed to refresh campaign data');
-    } finally {
-      // Mark as not refreshing
-      setRefreshingCampaigns(prev => ({
+      
+      // Mark as not loading even if there was an error
+      setCampaignProgressData(prev => ({
         ...prev,
-        [campaignId]: false
+        [campaignId]: {
+          ...prev[campaignId],
+          loading: false
+        }
       }));
     }
   };
   
-  // Helper function to format amount for display (convert from smallest units to sgUSD)
-  const formatAmountValue = (amount?: string): number => {
+  // Initialize progress data for each campaign
+  useEffect(() => {
+    if (displayCampaigns.length > 0) {
+      const newProgressData: {[id: string]: any} = {};
+      
+      // Create progress data for each campaign
+      displayCampaigns.forEach(campaign => {
+        // Calculate initial progress for this campaign
+        const progress = calculateInitialProgress(campaign.currentAmount, campaign.goalAmount);
+        
+        newProgressData[campaign.id] = {
+          loading: false,
+          progress: progress,
+          currentAmount: campaign.currentAmount,
+          goalAmount: campaign.goalAmount,
+          currentAmountFormatted: formatAmount(campaign.currentAmount),
+          goalAmountFormatted: formatAmount(campaign.goalAmount),
+          lastBlockchainUpdate: Date.now()
+        };
+      });
+      
+      setCampaignProgressData(newProgressData);
+    }
+  }, [displayCampaigns]);
+  
+  // Helper function to calculate initial progress percentage
+  const calculateInitialProgress = (current: string, goal: string) => {
     try {
-      if (!amount) return 0;
-      const amountBigInt = BigInt(amount);
-      return Number(amountBigInt) / 1_000_000_000;
+      const currentAmount = BigInt(current);
+      const goalAmount = BigInt(goal);
+      
+      if (goalAmount === BigInt(0)) return 0;
+      
+      // Calculate percentage and convert to number (limited to 100%)
+      const percentage = Number((currentAmount * BigInt(100)) / goalAmount);
+      return Math.min(percentage, 100);
     } catch (error) {
-      console.error('Error getting formatted amount value:', error);
+      console.error('Error calculating progress:', error);
       return 0;
     }
   };
   
-// Campaign Progress Bar component that uses the useCampaignProgress hook
-function CampaignProgressBar({ campaignId, isRefreshing, onRefresh }: { campaignId: string, isRefreshing?: boolean, onRefresh?: () => void }) {
-  // Use the campaign progress hook to get sgUSD values
-  const {
-    loading,
-    progress,
-    currentAmountFormatted,
-    goalAmountFormatted,
-    refreshData
-  } = useCampaignProgress(campaignId);
-
-  return (
-    <>
-      <div className="flex flex-wrap justify-between text-sm mb-1">
-        <span className="font-medium text-sui-navy">{progress}% Funded</span>
-        <div className="flex items-center">
-          <span className="text-gray-700">Goal: <span className="font-medium text-blue-500">{goalAmountFormatted}</span> sgUSD</span>
-          {onRefresh && (
-            <button 
-              onClick={onRefresh}
-              className="ml-2 text-gray-500 hover:text-sui-navy transition-colors" 
-              disabled={isRefreshing || loading}
-            >
-              <RefreshCw className="h-3 w-3" />
-            </button>
-          )}
-        </div>
-      </div>
-      <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden mt-1 mb-2">
-        <div 
-          className={`h-full bg-gradient-to-r from-green-400 to-green-500 rounded-full transition-all duration-500 ${loading ? 'animate-pulse' : ''}`}
-          style={{ width: `${progress}%` }}
-        ></div>
-      </div>
-    </>
-  );
-}
-
-// This function is now handled by the useCampaignProgress hook
-
-// Placeholder progress bar for loading state
-function PlaceholderProgressBar() {
-  return (
-    <>
-      <div className="flex flex-wrap justify-between text-sm mb-1">
-        <span className="font-medium text-sui-navy animate-pulse">0% Funded</span>
-        <span className="text-gray-700">Goal: <span className="font-medium text-blue-500">0.00</span> sgUSD</span>
-      </div>
-      <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden mt-1 mb-2">
-        <div 
-          className="h-full bg-gradient-to-r from-gray-200 to-gray-300 rounded-full animate-pulse" 
-          style={{ width: '0%' }}
-        ></div>
-      </div>
-    </>
-  );
-}
+  // Helper function to format amount for display
+  const formatAmount = (amount: string): string => {
+    try {
+      const amountBigInt = BigInt(amount);
+      return (Number(amountBigInt) / 1_000_000_000).toFixed(2);
+    } catch (error) {
+      console.error('Error formatting amount:', error);
+      return '0.00';
+    }
+  };
   
   // Format the timestamp to "X days ago"
   const formatTimeAgo = (timestamp: string) => {
@@ -184,49 +173,25 @@ function PlaceholderProgressBar() {
   // Use placeholder data if no campaigns are loaded yet
   const events = displayCampaigns.length > 0 ? displayCampaigns : [
     {
-      id: 'placeholder-1',
+      id: '1',
       name: "Loading campaigns...",
-      description: "Please wait while we fetch campaigns from the blockchain.",
-      imageUrl: "/placeholder.svg",
+      description: "Please connect your wallet to view campaigns from the blockchain.",
+      imageUrl: "https://images.unsplash.com/photo-1503736334956-4c8f8e92946d?auto=format&fit=crop&w=600&q=80",
       createdAt: Date.now().toString(),
-      goalAmount: "10000000000", // 10 sgUSD
+      goalAmount: "100",
       currentAmount: "0",
-      currentAmountSgUSD: "0", // 0 sgUSD
-      deadline: Math.floor(Date.now() / 1000 + 30 * 24 * 60 * 60).toString(), // 30 days from now in seconds
-      category: "Loading",
-      creator: ""
-    },
-    {
-      id: 'placeholder-2',
-      name: "Connecting to Sui...",
-      description: "We're connecting to the Sui blockchain to fetch the latest campaigns.",
-      imageUrl: "/placeholder.svg",
-      createdAt: Date.now().toString(),
-      goalAmount: "5000000000", // 5 sgUSD
-      currentAmount: "0",
-      currentAmountSgUSD: "0", // 0 sgUSD
-      deadline: Math.floor(Date.now() / 1000 + 15 * 24 * 60 * 60).toString(), // 15 days from now in seconds
-      category: "Loading",
-      creator: ""
-    },
-    {
-      id: 'placeholder-3',
-      name: "Almost there...",
-      description: "Just a moment while we load the latest crowdfunding campaigns.",
-      imageUrl: "/placeholder.svg",
-      createdAt: Date.now().toString(),
-      goalAmount: "3000000000", // 3 sgUSD
-      currentAmount: "0",
-      currentAmountSgUSD: "0", // 0 sgUSD
-      deadline: Math.floor(Date.now() / 1000 + 20 * 24 * 60 * 60).toString(), // 20 days from now in seconds
+      deadline: (Date.now() + 30 * 24 * 60 * 60 * 1000).toString(),
       category: "Loading",
       creator: ""
     },
   ]
 
+  // Determine if the loading spinner should be shown
+  const showLoadingSpinner = loading;
+
   return (
-    <section id="newest-events" className="min-h-screen flex flex-col justify-center px-4 sm:px-6 lg:px-8 bg-white">
-      <div className="max-w-[90%] mx-auto">
+    <section id="newest-events" className={`flex flex-col px-4 sm:px-6 lg:px-8 bg-white pb-12 ${showLoadingSpinner ? 'pt-20' : 'pt-24'}`}>
+      <div className="max-w-[90%] mx-auto w-full">
         <div className="flex justify-between items-center mb-12">
           <AnimationWrapper animationClass="fade-right">
             <h2 className="text-3xl font-everett font-bold sui-navy-text">Newest Crowdfunding Events</h2>
@@ -242,12 +207,10 @@ function PlaceholderProgressBar() {
         </div>
 
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {(isFetching || (loading && displayCampaigns.length === 0)) ? (
+          {showLoadingSpinner ? (
             <div className="col-span-3 text-center py-12">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-sui-navy mx-auto mb-4"></div>
-              <p className="text-sui-navy font-medium">Loading campaigns from the blockchain...</p>
-              <p className="text-gray-500 text-sm mt-2">This may take a few moments as we connect to the Sui network</p>
-              {isFetching && <p className="text-xs text-gray-400 mt-2">Fetching latest data...</p>}
+              <p>Loading campaigns from the blockchain...</p>
             </div>
           ) : error ? (
             <div className="col-span-3 text-center py-12">
@@ -267,7 +230,7 @@ function PlaceholderProgressBar() {
             <AnimationWrapper
               key={campaign.id}
               id="newest-events"
-              className={`bg-white rounded-lg overflow-hidden border shadow-sm hover:shadow-md transition-shadow duration-300 ${(isFetching || (loading && !displayCampaigns.length)) ? 'animate-pulse' : ''}`}
+              className="bg-white rounded-lg overflow-hidden border shadow-sm hover:shadow-md transition-shadow duration-300"
               animationClass="fade-up"
               delay={index * 0.2}
             >
@@ -287,14 +250,29 @@ function PlaceholderProgressBar() {
 
               <div className="p-6">
                 <div className="mb-4">
-                  {/* Use the useCampaignProgress hook for consistent sgUSD progress tracking */}
-                  {campaign.id.startsWith('placeholder') ? (
-                    // Use a placeholder progress bar for loading state
-                    <PlaceholderProgressBar />
-                  ) : (
-                    // Use the real progress bar with sgUSD values for actual campaigns
-                    <CampaignProgressBar campaignId={campaign.id} isRefreshing={refreshingCampaigns[campaign.id]} onRefresh={() => refreshCampaignProgress(campaign.id)} />
-                  )}
+                  {/* Use our progress hooks for consistent progress tracking */}
+                  {(() => {
+                    // Get the progress data for this campaign
+                    const progressData = campaignProgressData[campaign.id] || {
+                      progress: calculateInitialProgress(campaign.currentAmount, campaign.goalAmount),
+                      goalAmountFormatted: formatAmount(campaign.goalAmount)
+                    };
+                    
+                    return (
+                      <>
+                        <div className="flex flex-wrap justify-between text-sm mb-1">
+                          <span className="font-medium text-sui-navy">{progressData.progress}% Funded</span>
+                          <span className="text-gray-700">Goal: <span className="font-medium text-blue-500">{progressData.goalAmountFormatted}</span> sgUSD</span>
+                        </div>
+                        <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden mt-1 mb-2">
+                          <div 
+                            className="h-full bg-gradient-to-r from-green-400 to-green-500 rounded-full transition-all duration-500" 
+                            style={{ width: `${progressData.progress}%` }}
+                          ></div>
+                        </div>
+                      </>
+                    );
+                  })()}
                 </div>
 
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mt-4">
@@ -307,31 +285,7 @@ function PlaceholderProgressBar() {
 
                   <div className="flex items-center text-xs text-gray-600 bg-gray-50 px-3 py-1.5 rounded-full border border-gray-100">
                     <Clock className="h-3.5 w-3.5 mr-1.5 text-gray-500" />
-                    <span>
-                      {(() => {
-                        try {
-                          // Check if deadline is valid
-                          if (!campaign.deadline) return 'Deadline not set';
-                          
-                          // Parse the deadline timestamp
-                          const deadlineTimestamp = Number(campaign.deadline);
-                          
-                          // Validate the timestamp (must be a valid future date)
-                          if (isNaN(deadlineTimestamp) || deadlineTimestamp <= 0) {
-                            return 'Invalid deadline';
-                          }
-                          
-                          // Convert to milliseconds and create Date object
-                          const deadlineDate = new Date(deadlineTimestamp * 1000);
-                          
-                          // Format the date
-                          return `Ends on ${format(deadlineDate, 'MMM d, yyyy')}`;
-                        } catch (error) {
-                          console.error('Error formatting deadline:', error, campaign.deadline);
-                          return 'Date error';
-                        }
-                      })()}
-                    </span>
+                    <span>Ends on {campaign.deadline ? format(new Date(Number(campaign.deadline) * 1000), 'MMM d, yyyy') : 'Unknown'}</span>
                   </div>
                 </div>
               </div>

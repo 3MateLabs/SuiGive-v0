@@ -29,12 +29,8 @@ function CustomConnectButton(props: React.ComponentProps<typeof ConnectButton>) 
         /* Style the connect button (both connected and disconnected states) */
         .custom-connect-button button {
           border-radius: 9999px !important;
-          background: linear-gradient(to right, #f0f9ff, #e0f2fe) !important;
-          border: 1px solid #bae6fd !important;
-          padding: 0.375rem 0.75rem !important;
+          /* Removed background, border, padding, color, and font-weight to allow external styling */
           transition: all 0.2s ease-in-out !important;
-          color: #0c4a6e !important;
-          font-weight: 500 !important;
         }
         
         /* Hover effects for all buttons */
@@ -75,7 +71,7 @@ function CustomConnectButton(props: React.ComponentProps<typeof ConnectButton>) 
 interface WalletConnectButtonProps {
   onConnect?: () => void;
   className?: string;
-  variant?: "default" | "compact" | "navbar" | "donation";
+  variant?: "default" | "compact" | "navbar" | "donation" | "createCampaign";
   showMessage?: boolean;
 }
 
@@ -95,11 +91,12 @@ export function WalletConnectButton({
     const updateConnectionState = () => {
       if (!isMounted) return;
       
-      if (currentAccount) {
-        setIsConnected(true);
-        onConnect?.();
-      } else {
-        setIsConnected(false);
+      const newIsConnected = !!currentAccount;
+      if (newIsConnected !== isConnected) {
+        setIsConnected(newIsConnected);
+        if (newIsConnected) {
+          onConnect?.();
+        }
       }
     };
     
@@ -110,13 +107,22 @@ export function WalletConnectButton({
       isMounted = false;
       clearTimeout(timeoutId);
     };
-  }, [currentAccount, onConnect]);
+  }, [currentAccount, onConnect, isConnected]);
 
   // Enhanced variant for navbar
   if (variant === "navbar") {
     return (
       <div className={`${className} ml-1`}>
         <CustomConnectButton className="text-sm" />
+      </div>
+    );
+  }
+  
+  // New variant for create campaign button styling
+  if (variant === "createCampaign") {
+    return (
+      <div className={`${className}`}>
+        <CustomConnectButton className="bg-sui-navy text-white rounded-full px-5 py-2 font-medium hover:bg-sui-navy/90 transition-all duration-200 hover:shadow-md" />
       </div>
     );
   }

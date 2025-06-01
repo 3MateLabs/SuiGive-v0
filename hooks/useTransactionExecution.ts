@@ -18,7 +18,7 @@ export interface TransactionExecutionHook {
   executeTransaction: (transaction: Transaction) => Promise<any>;
   createCampaign: (name: string, description: string, imageUrl: string, goalAmount: number, deadline: number, category: string) => Promise<any>;
   donate: (campaignId: string, amount: number, isAnonymous?: boolean) => Promise<any>;
-  donateSgUSD: (campaignId: string, coinObjectId: string, amount: number, message?: string, isAnonymous?: boolean) => Promise<any>;
+  donateSgUSD: (campaignId: string, coinObjectId: string, amount: number, isAnonymous?: boolean) => Promise<any>;
   withdrawFunds: (campaignId: string, capabilityId: string) => Promise<any>;
   isPending: boolean;
   error: Error | null;
@@ -205,7 +205,6 @@ export function useTransactionExecution(): TransactionExecutionHook {
     campaignId: string,
     coinObjectId: string,
     amount: number,
-    message: string = '',
     isAnonymous: boolean = false
   ): Promise<TransactionOutput> => {
     console.log('Donating with sgUSD using transaction hook...');
@@ -227,7 +226,7 @@ export function useTransactionExecution(): TransactionExecutionHook {
     
     // First split the coin to get only the amount we want to donate
     // This is critical - otherwise the entire coin will be donated
-    const splitCoin = tx.splitCoins(sgUSDCoin, [tx.pure.u64(amount)]);
+    const splitCoin = tx.splitCoins(sgUSDCoin, [tx.pure.u64(amount.toString())]);
     
     // Add the move call to donate with sgUSD using only the split portion
     tx.moveCall({
@@ -235,7 +234,7 @@ export function useTransactionExecution(): TransactionExecutionHook {
       arguments: [
         campaign,
         splitCoin,  // Use the split coin with the exact amount
-        tx.pure.string(message),  // Use the provided message
+        tx.pure.string(""),  // Empty message
         tx.pure.bool(isAnonymous),
       ],
     });

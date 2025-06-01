@@ -115,7 +115,7 @@ export default function ExplorePage() {
     <div className="min-h-screen flex flex-col bg-white">
       <Navbar />
       <main className="flex-1">
-        <section className="w-full bg-gradient-to-b from-[#d6eaff] to-white py-10 px-4">
+        <section className="w-full bg-gradient-to-b from-[#d6eaff] to-white py-6 px-4">
           <div className="max-w-5xl mx-auto text-center">
             <h1 className="text-2xl md:text-3xl font-bold mb-2 sui-navy-text">Explore Crowdfunding <span className="inline-block">🖱️</span></h1>
             <p className="text-gray-600 mb-6">For Dreams, Needs, and the Moments That Matter Most.</p>

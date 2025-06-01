@@ -42,8 +42,8 @@ class RequestLimiter {
   }
 }
 
-// Create a global request limiter with increased concurrency
-const requestLimiter = new RequestLimiter(5); // Increased from 2 to 5 for faster loading
+// Create a global request limiter
+const requestLimiter = new RequestLimiter(2);
 
 // Define campaign interface
 export interface Campaign {
@@ -52,9 +52,7 @@ export interface Campaign {
   description: string;
   imageUrl: string;
   goalAmount: string; // Using string for large numbers
-  currentAmount: string; // SUI amount
-  currentAmountSgUSD: string; // sgUSD amount
-  backerCount?: string;
+  currentAmount: string;
   deadline: string;
   category: string;
   creator: string;
@@ -408,7 +406,7 @@ export async function getAllCampaigns(client: SuiClient): Promise<Campaign[]> {
         
         // Add timeout to the fetch operation
         const timeoutPromise = new Promise((_, reject) => {
-          setTimeout(() => reject(new Error('Registry fetch timeout')), 20000); // 20 seconds timeout
+          setTimeout(() => reject(new Error('Registry fetch timeout')), 45000); // Increased to 45 seconds timeout
         });
       
         // Race between fetch and timeout
@@ -460,14 +458,13 @@ export async function getAllCampaigns(client: SuiClient): Promise<Campaign[]> {
           return [];
         }
         
-        // Fetch details for each campaign with increased concurrency limit for faster loading
-        const concurrencyLimit = 8; // Increased from 2 to 8 for faster loading
+        // Fetch details for each campaign with reduced concurrency limit to avoid rate limiting
+        const concurrencyLimit = 2; // Process only 2 campaigns at a time to avoid rate limits
         const results: Campaign[] = [];
         
-        // Process campaigns in larger batches
+        // Process campaigns in batches
         for (let i = 0; i < campaignIds.length; i += concurrencyLimit) {
           const batch = campaignIds.slice(i, i + concurrencyLimit);
-          console.log(`Processing batch of ${batch.length} campaigns (${i+1}-${Math.min(i+concurrencyLimit, campaignIds.length)} of ${campaignIds.length})`);
           
           const batchResults = await Promise.all(
             batch.map(async (id: string) => {
@@ -561,9 +558,9 @@ export async function getAllCampaigns(client: SuiClient): Promise<Campaign[]> {
           // Add valid campaigns from this batch to results
           results.push(...batchResults.filter(Boolean) as Campaign[]);
           
-          // Minimal delay between batches to maintain responsiveness
+          // Increased delay between batches to avoid rate limiting
           if (i + concurrencyLimit < campaignIds.length) {
-            await new Promise(resolve => setTimeout(resolve, 100)); // Reduced from 5000ms to 100ms
+            await new Promise(resolve => setTimeout(resolve, 5000)); // 5 seconds delay instead of 2
           }
         }
         
@@ -606,10 +603,9 @@ export async function getCampaignDetails(client: SuiClient, campaignId: string):
     
     while (retries <= maxRetries) {
       try {
-        // Only add delay for actual retries, not for first attempt
+        // Add delay between retries with exponential backoff
         if (retries > 0) {
-          // Use a faster backoff strategy
-          const delay = Math.min(Math.pow(1.5, retries) * 300, 2000); // 300ms, 450ms, 675ms, max 2s
+          const delay = Math.min(Math.pow(2, retries) * 500, 5000); // 500ms, 1s, 2s, 4s, max 5s
           console.log(`Retry ${retries}/${maxRetries} for campaign ${campaignId}, waiting ${delay}ms...`);
           await new Promise(resolve => setTimeout(resolve, delay));
         }
@@ -624,57 +620,13 @@ export async function getCampaignDetails(client: SuiClient, campaignId: string):
           return null;
         }
         
-        // Extract sgUSD balance - handle different possible structures
-        let raisedSgUSDRaw = '0';
-        if (typeof campaignData.fields.raised_sgusd === 'string') {
-          raisedSgUSDRaw = campaignData.fields.raised_sgusd;
-        } else if (typeof campaignData.fields.raised_sgusd === 'object') {
-          if (campaignData.fields.raised_sgusd?.fields?.value) {
-            raisedSgUSDRaw = campaignData.fields.raised_sgusd.fields.value;
-          } else if (campaignData.fields.raised_sgusd?.value) {
-            raisedSgUSDRaw = campaignData.fields.raised_sgusd.value;
-          }
-        }
-        
-        // Extract SUI balance - handle different possible structures
-        let raisedSUIRaw = '0';
-        if (typeof campaignData.fields.raised === 'string') {
-          raisedSUIRaw = campaignData.fields.raised;
-        } else if (typeof campaignData.fields.raised === 'object') {
-          if (campaignData.fields.raised?.fields?.value) {
-            raisedSUIRaw = campaignData.fields.raised.fields.value;
-          } else if (campaignData.fields.raised?.value) {
-            raisedSUIRaw = campaignData.fields.raised.value;
-          }
-        }
-        
-        // Log the raw image URL from the campaign data
-        console.log('Raw image URL from campaign:', campaignData.fields.image_url);
-        
-        // Process the image URL - ensure it's a valid URL or use a placeholder
-        let imageUrl = campaignData.fields.image_url;
-        
-        // If image URL is empty or null, use placeholder
-        if (!imageUrl) {
-          imageUrl = '/placeholder.svg';
-        }
-        // If it's not a full URL (doesn't start with http/https), and not a local path (doesn't start with /)
-        // then add a leading slash to make it a valid path
-        else if (!imageUrl.startsWith('http') && !imageUrl.startsWith('/')) {
-          imageUrl = '/' + imageUrl;
-        }
-        
-        console.log('Processed image URL:', imageUrl);
-        
         return {
           id: campaignId,
           name: campaignData.fields.name,
           description: campaignData.fields.description,
-          imageUrl: imageUrl,
+          imageUrl: campaignData.fields.image_url,
           goalAmount: campaignData.fields.goal_amount,
-          currentAmount: campaignData.fields.current_amount || raisedSUIRaw,
-          currentAmountSgUSD: raisedSgUSDRaw,
-          backerCount: campaignData.fields.backer_count || '0',
+          currentAmount: campaignData.fields.current_amount,
           deadline: campaignData.fields.deadline,
           category: campaignData.fields.category,
           creator: campaignData.fields.creator,

@@ -112,25 +112,6 @@ export default function DonatePage() {
     lastBlockchainUpdate
   } = useCampaignProgress(typeof id === 'string' ? id : '');
   
-  // Ensure the campaign progress is synchronized with the homepage data
-  useEffect(() => {
-    if (campaign) {
-      console.log('Synchronizing campaign progress with campaign data:', {
-        id: campaign.id,
-        currentAmount: campaign.currentAmount,
-        goalAmount: campaign.goalAmount
-      });
-      
-      // Debug image URL specifically
-      console.log('Campaign image URL:', campaign.imageUrl);
-      console.log('Image URL type:', typeof campaign.imageUrl);
-      
-      // Force refresh the progress data when campaign data is loaded
-      // This ensures the progress bar matches what was shown on the homepage
-      refreshProgress();
-    }
-  }, [campaign, refreshProgress]);
-  
   // Memoized donation completion handler to prevent infinite update loops
   const handleDonationComplete = useCallback((amountValue: number, amountInUnits: string) => {
     // Show loading toast
@@ -278,45 +259,7 @@ export default function DonatePage() {
           <div className="md:col-span-3 space-y-6">
             <div className="bg-white rounded-xl overflow-hidden shadow-sm">
               <div className="relative h-64 w-full">
-                {/* Handle both external and local image URLs */}
-                {campaign.imageUrl ? (
-                  campaign.imageUrl.startsWith('http') ? (
-                    // External URL - use direct img tag for maximum compatibility
-                    <div className="relative w-full h-full">
-                      <img 
-                        src={campaign.imageUrl} 
-                        alt={campaign.name} 
-                        className="absolute inset-0 w-full h-full object-cover"
-                        onError={(e) => {
-                          console.error('External image failed to load:', campaign.imageUrl);
-                          const target = e.target as HTMLImageElement;
-                          target.src = '/placeholder.svg';
-                        }}
-                      />
-                    </div>
-                  ) : (
-                    // Local URL - use Next.js image optimization
-                    <Image 
-                      src={campaign.imageUrl.startsWith('/') ? campaign.imageUrl : `/${campaign.imageUrl}`} 
-                      alt={campaign.name} 
-                      fill 
-                      className="object-cover"
-                      onError={(e) => {
-                        console.error('Local image failed to load:', campaign.imageUrl);
-                        const target = e.target as HTMLImageElement;
-                        target.src = '/placeholder.svg';
-                      }}
-                    />
-                  )
-                ) : (
-                  // No image URL - use placeholder
-                  <Image 
-                    src="/placeholder.svg" 
-                    alt={campaign.name} 
-                    fill 
-                    className="object-cover"
-                  />
-                )}
+                <Image src={campaign.imageUrl || "/placeholder.svg"} alt={campaign.name} fill className="object-cover" />
                 <div className="absolute top-4 left-4 bg-white rounded-full p-3">
                   <span className="text-2xl">🎯</span>
                 </div>
@@ -334,9 +277,9 @@ export default function DonatePage() {
                 <p className="text-gray-700 mb-6">{campaign.description}</p>
 
                 <div className="mb-6">
-                  {/* Progress bar using useCampaignProgress hook - sgUSD only */}
+                  {/* Progress bar using useCampaignProgress hook */}
                   <div className="flex justify-between text-sm mb-1">
-                    <span className="font-medium">{progress}% Funded with sgUSD</span>
+                    <span className="font-medium">{progress}% Funded</span>
                     <span>Goal: {goalAmountFormatted} sgUSD</span>
                     <button 
                       onClick={() => {
@@ -357,9 +300,8 @@ export default function DonatePage() {
                       style={{ width: `${progress}%` }}
                     ></div>
                   </div>
-                  <div className="mt-2 flex justify-between text-xs text-gray-500">
-                    <span>sgUSD Donated: <span className="font-medium">{currentAmountFormatted}</span> sgUSD</span>
-                    <span>Progress based on sgUSD donations only</span>
+                  <div className="mt-2 text-xs text-gray-500">
+                    Current: <span>{currentAmountFormatted}</span> sgUSD
                   </div>
                 </div>
 

@@ -3,12 +3,13 @@
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import AnimationWrapper from "./animation-wrapper"
+import Link from "next/link"
 
 export default function AboutSection() {
   return (
-    <section id="about" className="min-h-screen flex items-center px-4 sm:px-6 lg:px-8 sui-blue-bg">
+    <section id="about" className="py-20 flex items-center px-4 sm:px-6 lg:px-8 sui-blue-bg">
       <div className="max-w-[90%] mx-auto">
-        <div className="grid lg:grid-cols-2 gap-12 items-center">
+        <div className="grid lg:grid-cols-2 gap-15 items-center">
           <AnimationWrapper id="about">
             <div className="inline-block rounded-lg bg-sui-navy px-3 py-1 text-sm text-white mb-4">About SuiGives</div>
             <h2 className="text-3xl md:text-4xl font-bold mb-6 sui-navy-text">
@@ -19,14 +20,11 @@ export default function AboutSection() {
               transparent, secure, and community-driven platform. Our mission is to empower creators, innovators, and
               changemakers by connecting them directly with supporters who believe in their vision.
             </p>
-            <p className="text-gray-700 mb-6">
-              Founded in 2023, we've already helped fund over 200 projects across healthcare, education, technology, and
-              community development. Our platform eliminates traditional barriers and ensures that every contribution
-              makes a meaningful impact.
-            </p>
-            <Button className="rounded-full px-6 py-2 bg-sui-navy text-white hover:bg-sui-navy/90">
-              Learn More About SuiGives
-            </Button>
+            <Link href="/about">
+              <Button className="rounded-full px-6 py-2 bg-sui-navy text-white hover:bg-sui-navy/90">
+                Learn More About SuiGives
+              </Button>
+            </Link>
           </AnimationWrapper>
 
           <AnimationWrapper id="about" className="relative h-[400px] rounded-xl overflow-hidden shadow-lg" delay={0.3}>

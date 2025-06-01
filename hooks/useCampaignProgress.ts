@@ -90,14 +90,26 @@ export function useCampaignProgress(campaignId: string) {
       
       try {
         isFetchingRef.current = true;
+        console.log('Fetching campaign data from blockchain for ID:', campaignId);
         const campaign = await getCampaignDetails(client, campaignId);
         
         if (campaign) {
+          // Use sgUSD amount instead of SUI amount for progress calculation
+          console.log('Received campaign data from blockchain:', {
+            id: campaignId,
+            currentAmount: campaign.currentAmount,
+            currentAmountSgUSD: campaign.currentAmountSgUSD,
+            goalAmount: campaign.goalAmount,
+            formattedCurrent: formatAmount(campaign.currentAmountSgUSD), // Use sgUSD
+            formattedGoal: formatAmount(campaign.goalAmount)
+          });
+          
           // Batch state updates to prevent cascading renders
           const updates = () => {
-            setCurrentAmount(campaign.currentAmount);
+            // Use sgUSD amount for progress tracking
+            setCurrentAmount(campaign.currentAmountSgUSD);
             setGoalAmount(campaign.goalAmount);
-            updateProgressPercentage(campaign.currentAmount, campaign.goalAmount);
+            updateProgressPercentage(campaign.currentAmountSgUSD, campaign.goalAmount);
             setLastBlockchainUpdate(Date.now());
           };
           
@@ -107,12 +119,14 @@ export function useCampaignProgress(campaignId: string) {
           // Save to local storage
           saveLocalProgressData({
             campaignId,
-            currentAmount: campaign.currentAmount,
+            currentAmount: campaign.currentAmountSgUSD, // Use sgUSD
             lastUpdated: Date.now(),
             pendingDonations: []
           });
           
-          console.log('Updated campaign data from blockchain:', campaign);
+          console.log('Updated campaign progress data with sgUSD amounts');
+        } else {
+          console.warn('No campaign data returned from blockchain for ID:', campaignId);
         }
       } catch (error) {
         console.error('Error fetching blockchain data:', error);
@@ -196,12 +210,32 @@ export function useCampaignProgress(campaignId: string) {
         return;
       }
       
-      const currentBigInt = BigInt(current);
-      const goalBigInt = BigInt(goal);
+      // Force the progress to be 0 if the current amount is less than 0.01
+      // This ensures the gauge is consistent with the displayed amount (which shows 0.00)
+      const currentFormatted = getFormattedAmountValue(current);
+      const goalFormatted = getFormattedAmountValue(goal);
       
-      // Calculate percentage (0-100)
-      const percentage = Number((currentBigInt * BigInt(100)) / goalBigInt);
+      if (goalFormatted === 0) {
+        setProgress(0);
+        return;
+      }
+      
+      // If the formatted amount would display as 0.00, set progress to 0
+      if (currentFormatted < 0.01) {
+        console.log('Current amount too small, setting progress to 0');
+        setProgress(0);
+        return;
+      }
+      
+      // Calculate percentage using the formatted values (0-100)
+      const percentage = Math.floor((currentFormatted * 100) / goalFormatted);
       setProgress(Math.min(percentage, 100));
+      
+      console.log('Progress calculation:', {
+        current: currentFormatted,
+        goal: goalFormatted,
+        percentage
+      });
     } catch (error) {
       console.error('Error calculating progress percentage:', error);
       setProgress(0);
@@ -254,14 +288,35 @@ export function useCampaignProgress(campaignId: string) {
       return '0.00';
     }
   };
+  
+  // Get the numeric value of the formatted amount (for consistency between display and calculations)
+  const getFormattedAmountValue = (amount?: string): number => {
+    try {
+      if (!amount) return 0;
+      const amountBigInt = BigInt(amount);
+      return Number(amountBigInt) / 1_000_000_000;
+    } catch (error) {
+      console.error('Error getting formatted amount value:', error);
+      return 0;
+    }
+  };
 
+  // Calculate formatted values once to ensure consistency
+  const currentAmountFormatted = formatAmount(currentAmount);
+  const goalAmountFormatted = formatAmount(goalAmount);
+  
+  // If the formatted amount is 0.00, ensure progress is also 0
+  if (currentAmountFormatted === '0.00' && progress > 0) {
+    setProgress(0);
+  }
+  
   return {
     loading,
     currentAmount,
     goalAmount,
     progress,
-    currentAmountFormatted: formatAmount(currentAmount),
-    goalAmountFormatted: formatAmount(goalAmount),
+    currentAmountFormatted,
+    goalAmountFormatted,
     addDonation,
     refreshData: fetchBlockchainData,
     lastBlockchainUpdate

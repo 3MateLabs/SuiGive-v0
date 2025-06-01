@@ -1,16 +1,21 @@
-"use client"
+"use client";
 
-import { useInView } from "@/hooks/use-in-view"
-import { Bookmark, Clock, DollarSign } from "lucide-react"
-import Image from "next/image"
-import { Button } from "@/components/ui/button"
+import { useInView } from "@/hooks/use-in-view";
+import { Bookmark, Clock, DollarSign } from "lucide-react";
+import Image from "next/image";
+import { Button } from "@/components/ui/button";
 
 export default function FeaturedEvent() {
-  const { ref, inView } = useInView()
+  const { ref, inView } = useInView();
 
   return (
     <section className="py-16 px-4 sm:px-6 lg:px-8">
-      <div ref={ref} className={`max-w-7xl mx-auto animate-on-scroll ${inView ? "visible" : ""}`}>
+      <div
+        ref={ref}
+        className={`max-w-7xl mx-auto animate-on-scroll ${
+          inView ? "visible" : ""
+        }`}
+      >
         <h2 className="text-3xl font-bold mb-8">Featured Crowdfund Event</h2>
 
         <div className="glassmorphism rounded-xl overflow-hidden">
@@ -23,8 +28,9 @@ export default function FeaturedEvent() {
                 <div>
                   <h3 className="text-xl font-bold">Healthcare Funding</h3>
                   <p className="text-gray-700">
-                    This healthcare funding event is aimed at helping kids in Africa suffering polio and who do not have
-                    access to vaccination.
+                    This healthcare funding event is aimed at helping kids in
+                    Africa suffering polio and who do not have access to
+                    vaccination.
                   </p>
                 </div>
               </div>
@@ -51,9 +57,14 @@ export default function FeaturedEvent() {
               <div className="flex items-center">
                 <div className="mr-4">
                   <div className="progress-bar w-40">
-                    <div className="progress-bar-fill" style={{ width: `60%` }}></div>
+                    <div
+                      className="progress-bar-fill"
+                      style={{ width: `60%` }}
+                    ></div>
                   </div>
-                  <div className="text-xs text-gray-500 mt-1">60% completed</div>
+                  <div className="text-xs text-gray-500 mt-1">
+                    60% completed
+                  </div>
                 </div>
 
                 <Button className="rounded-full bg-black text-white hover:bg-gray-800">
@@ -66,5 +77,5 @@ export default function FeaturedEvent() {
         </div>
       </div>
     </section>
-  )
+  );
 }

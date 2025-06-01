@@ -19,9 +19,16 @@ export default function NewestEvents() {
   // Use a ref to track if we've already fetched campaigns
   const initialFetchDone = useRef(false);
 
+  // Track when we actually start fetching data
+  const [isFetching, setIsFetching] = useState(false);
+  
+  // Use useCallback to memoize the fetch function so it doesn't change on every render
   useEffect(() => {
     // Only fetch campaigns on initial mount
     if (initialFetchDone.current) return;
+    
+    // Immediately set fetching state to true
+    setIsFetching(true);
     
     // Fetch campaigns when component mounts with retry logic
     const fetchWithRetry = async () => {
@@ -29,22 +36,27 @@ export default function NewestEvents() {
         console.log('Initial campaign fetch on component mount');
         await refreshCampaigns();
         initialFetchDone.current = true;
+        setIsFetching(false); // Done fetching
       } catch (err) {
         console.error('Error fetching campaigns in component:', err);
-        // Retry after 3 seconds if there was an error
+        // Retry after 2 seconds if there was an error
         setTimeout(() => {
           refreshCampaigns()
             .then(() => {
               initialFetchDone.current = true;
+              setIsFetching(false); // Done fetching
             })
-            .catch(e => console.error('Retry failed:', e));
-        }, 3000);
+            .catch(e => {
+              console.error('Retry failed:', e);
+              setIsFetching(false); // Stop loading even if failed
+            });
+        }, 2000); // Reduced retry time
       }
     };
     
     fetchWithRetry();
     // Empty dependency array ensures this only runs once on mount
-  }, []);
+  }, []);  // Remove refreshCampaigns from dependency array to prevent infinite loop
 
   useEffect(() => {
     if (campaigns && campaigns.length > 0) {
@@ -132,16 +144,37 @@ export default function NewestEvents() {
     }
   }, [displayCampaigns]);
   
+  // Helper function to format amount for display (convert from smallest units to sgUSD)
+  const formatAmountValue = (amount?: string): number => {
+    try {
+      if (!amount) return 0;
+      const amountBigInt = BigInt(amount);
+      return Number(amountBigInt) / 1_000_000_000;
+    } catch (error) {
+      console.error('Error getting formatted amount value:', error);
+      return 0;
+    }
+  };
+  
   // Helper function to calculate initial progress percentage
   const calculateInitialProgress = (current: string, goal: string) => {
     try {
-      const currentAmount = BigInt(current);
-      const goalAmount = BigInt(goal);
+      // Use the same formatting logic as the displayed amount for consistency
+      // This ensures the gauge matches exactly what's shown in the UI
+      const currentFormatted = formatAmountValue(current);
+      const goalFormatted = formatAmountValue(goal);
       
-      if (goalAmount === BigInt(0)) return 0;
+      if (goalFormatted === 0) return 0;
       
-      // Calculate percentage and convert to number (limited to 100%)
-      const percentage = Number((currentAmount * BigInt(100)) / goalAmount);
+      // If the formatted amount would display as 0.00, set progress to 0
+      if (currentFormatted < 0.01) {
+        console.log('Current amount too small, setting progress to 0');
+        return 0;
+      }
+      
+      // Calculate percentage using the formatted values (limited to 100%)
+      const percentage = Math.floor((currentFormatted * 100) / goalFormatted);
+      console.log('Progress calculation:', { current: currentFormatted, goal: goalFormatted, percentage });
       return Math.min(percentage, 100);
     } catch (error) {
       console.error('Error calculating progress:', error);
@@ -175,12 +208,36 @@ export default function NewestEvents() {
     {
       id: '1',
       name: "Loading campaigns...",
-      description: "Please connect your wallet to view campaigns from the blockchain.",
-      imageUrl: "https://images.unsplash.com/photo-1503736334956-4c8f8e92946d?auto=format&fit=crop&w=600&q=80",
+      description: "Please wait while we fetch campaigns from the blockchain.",
+      imageUrl: "/placeholder.svg",
       createdAt: Date.now().toString(),
-      goalAmount: "100",
+      goalAmount: "10000000000", // 10 sgUSD
       currentAmount: "0",
-      deadline: (Date.now() + 30 * 24 * 60 * 60 * 1000).toString(),
+      deadline: Math.floor(Date.now() / 1000 + 30 * 24 * 60 * 60).toString(), // 30 days from now in seconds
+      category: "Loading",
+      creator: ""
+    },
+    {
+      id: '2',
+      name: "Connecting to Sui...",
+      description: "We're connecting to the Sui blockchain to fetch the latest campaigns.",
+      imageUrl: "/placeholder.svg",
+      createdAt: Date.now().toString(),
+      goalAmount: "5000000000", // 5 sgUSD
+      currentAmount: "0",
+      deadline: Math.floor(Date.now() / 1000 + 15 * 24 * 60 * 60).toString(), // 15 days from now in seconds
+      category: "Loading",
+      creator: ""
+    },
+    {
+      id: '3',
+      name: "Almost there...",
+      description: "Just a moment while we load the latest crowdfunding campaigns.",
+      imageUrl: "/placeholder.svg",
+      createdAt: Date.now().toString(),
+      goalAmount: "3000000000", // 3 sgUSD
+      currentAmount: "0",
+      deadline: Math.floor(Date.now() / 1000 + 20 * 24 * 60 * 60).toString(), // 20 days from now in seconds
       category: "Loading",
       creator: ""
     },
@@ -204,10 +261,12 @@ export default function NewestEvents() {
         </div>
 
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {loading ? (
+          {(isFetching || (loading && displayCampaigns.length === 0)) ? (
             <div className="col-span-3 text-center py-12">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-sui-navy mx-auto mb-4"></div>
-              <p>Loading campaigns from the blockchain...</p>
+              <p className="text-sui-navy font-medium">Loading campaigns from the blockchain...</p>
+              <p className="text-gray-500 text-sm mt-2">This may take a few moments as we connect to the Sui network</p>
+              {isFetching && <p className="text-xs text-gray-400 mt-2">Fetching latest data...</p>}
             </div>
           ) : error ? (
             <div className="col-span-3 text-center py-12">
@@ -227,7 +286,7 @@ export default function NewestEvents() {
             <AnimationWrapper
               key={campaign.id}
               id="newest-events"
-              className="bg-white rounded-lg overflow-hidden border shadow-sm hover:shadow-md transition-shadow duration-300"
+              className={`bg-white rounded-lg overflow-hidden border shadow-sm hover:shadow-md transition-shadow duration-300 ${(isFetching || (loading && !displayCampaigns.length)) ? 'animate-pulse' : ''}`}
               animationClass="fade-up"
               delay={index * 0.2}
             >
@@ -282,7 +341,31 @@ export default function NewestEvents() {
 
                   <div className="flex items-center text-xs text-gray-600 bg-gray-50 px-3 py-1.5 rounded-full border border-gray-100">
                     <Clock className="h-3.5 w-3.5 mr-1.5 text-gray-500" />
-                    <span>Ends on {campaign.deadline ? format(new Date(Number(campaign.deadline) * 1000), 'MMM d, yyyy') : 'Unknown'}</span>
+                    <span>
+                      {(() => {
+                        try {
+                          // Check if deadline is valid
+                          if (!campaign.deadline) return 'Deadline not set';
+                          
+                          // Parse the deadline timestamp
+                          const deadlineTimestamp = Number(campaign.deadline);
+                          
+                          // Validate the timestamp (must be a valid future date)
+                          if (isNaN(deadlineTimestamp) || deadlineTimestamp <= 0) {
+                            return 'Invalid deadline';
+                          }
+                          
+                          // Convert to milliseconds and create Date object
+                          const deadlineDate = new Date(deadlineTimestamp * 1000);
+                          
+                          // Format the date
+                          return `Ends on ${format(deadlineDate, 'MMM d, yyyy')}`;
+                        } catch (error) {
+                          console.error('Error formatting deadline:', error, campaign.deadline);
+                          return 'Date error';
+                        }
+                      })()}
+                    </span>
                   </div>
                 </div>
               </div>

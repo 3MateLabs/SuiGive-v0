@@ -7,11 +7,13 @@ import { SUI_CONFIG } from '@/lib/sui-config';
 import { useSuiCampaigns } from '@/hooks/useSuiCampaigns';
 import { useCachedCoins } from '@/hooks/useCachedSuiData';
 import { useGlobalSgUSDBalance, useStore } from '@/lib/store';
+import { useCampaignProgress } from '@/hooks/useCampaignProgress';
 import { toast } from 'react-hot-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 
 interface DonateWithSgUSDProps {
   campaignId: string;
@@ -25,9 +27,13 @@ export default function DonateWithSgUSD({ campaignId, campaignName, onDonationCo
   const { mutate: signAndExecute } = useSignAndExecuteTransaction();
   const { donateSgUSD, loading } = useSuiCampaigns();
   
+  // Use campaign progress hook to check if campaign is fully funded
+  const { currentAmount, goalAmount, progress } = useCampaignProgress(campaignId);
+  
   const [sgUSDAmount, setSgUSDAmount] = useState<string>('10');
   const [selectedCoinId, setSelectedCoinId] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [showFundedAlert, setShowFundedAlert] = useState<boolean>(false);
   
   // Use global state for SgUSD balance data
   const { 
@@ -120,8 +126,14 @@ export default function DonateWithSgUSD({ campaignId, campaignName, onDonationCo
     return `${integerPart}.${decimalPart.substring(0, 2)}`;
   };
   
-  // Handle donation with sgUSD
-  const handleDonate = async () => {
+  // Check if campaign is fully funded
+  const isCampaignFullyFunded = useCallback(() => {
+    // Check if progress is 100% or more
+    return progress >= 100;
+  }, [progress]);
+  
+  // Handle pre-donation check
+  const handlePreDonate = () => {
     if (!currentAccount) {
       toast.error('Please connect your wallet first');
       return;
@@ -138,7 +150,21 @@ export default function DonateWithSgUSD({ campaignId, campaignName, onDonationCo
       return;
     }
     
+    // Check if campaign is fully funded
+    if (isCampaignFullyFunded()) {
+      // Show confirmation dialog instead of proceeding directly
+      setShowFundedAlert(true);
+      return;
+    }
+    
+    // If not fully funded, proceed with donation
+    processDonation();
+  };
+  
+  // Process the actual donation
+  const processDonation = async () => {
     // Convert to smallest units (9 decimals)
+    const amountValue = parseFloat(sgUSDAmount);
     const amountInUnits = (amountValue * 1_000_000_000).toString();
     
     // Check if selected coin has enough balance
@@ -382,23 +408,47 @@ export default function DonateWithSgUSD({ campaignId, campaignName, onDonationCo
             min="0.01"
             step="1"
             value={sgUSDAmount}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSgUSDAmount(e.target.value)}
+            onChange={(e: ChangeEvent<HTMLInputElement>) => setSgUSDAmount(e.target.value)}
             placeholder="Enter amount in sgUSD"
           />
         </div>
         
         <Button 
-          className="w-full bg-black hover:bg-gray-800 text-white" 
-          onClick={handleDonate}
-          disabled={isLoading}
+          onClick={handlePreDonate} 
+          className="w-full bg-sui-navy hover:bg-sui-navy/90 text-white" 
+          disabled={isLoading || !selectedCoinId}
         >
           {isLoading ? (
             <>
               <span className="mr-2 inline-block h-4 w-4 animate-spin rounded-full border-2 border-solid border-white border-r-transparent align-[-0.125em]"></span>
               Processing...
             </>
-          ) : 'Donate sgUSD (testnet)'}
+          ) : 'Donate sgUSD'}
         </Button>
+        
+        {/* Alert Dialog for Fully Funded Campaign */}
+        <AlertDialog open={showFundedAlert} onOpenChange={setShowFundedAlert}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Campaign Fully Funded</AlertDialogTitle>
+              <AlertDialogDescription>
+                <p className="mb-2">
+                  This campaign has already reached its funding goal! 
+                </p>
+                <p className="mb-2">
+                  Any additional donations will go to the community and contribute to your GiveRep leaderboard score.
+                </p>
+                <p>
+                  Would you still like to donate {sgUSDAmount} sgUSD?
+                </p>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={processDonation}>Yes, Donate Anyway</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     );
   };

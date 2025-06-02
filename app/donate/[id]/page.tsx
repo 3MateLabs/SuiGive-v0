@@ -43,7 +43,7 @@ export default function DonatePage() {
       setLoadingSimilar(true);
       // Filter campaigns by same category, excluding the current campaign
       const similar = campaigns
-        .filter(c => 
+        .filter((c: Campaign) => 
           c.id !== campaign.id && 
           (c.category === campaign.category || Math.random() < 0.3) // Include some random campaigns if not enough in same category
         )

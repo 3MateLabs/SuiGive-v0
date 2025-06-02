@@ -62,8 +62,9 @@ export default function SgUSDBalanceDisplay() {
     // Initial fetch
     fetchSgUSDBalance();
 
-    // Set up a refresh interval (every 30 seconds)
-    const intervalId = setInterval(fetchSgUSDBalance, 30000);
+    // Set up a refresh interval (every 2 minutes instead of 30 seconds)
+    // This reduces API call frequency significantly
+    const intervalId = setInterval(fetchSgUSDBalance, 120000);
 
     // Clean up interval on unmount
     return () => clearInterval(intervalId);

@@ -5,6 +5,7 @@ import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
 import SuiProviders from "@/components/SuiProviders"
 import { Toaster } from "react-hot-toast"
+// API Monitor removed for production
 
 const inter = Inter({
   subsets: ["latin"],
@@ -31,6 +32,7 @@ export default function RootLayout({
           <SuiProviders>
             <Toaster position="top-center" />
             {children}
+            {/* API Monitor removed for production */}
           </SuiProviders>
         </ThemeProvider>
       </body>

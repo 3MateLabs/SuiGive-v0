@@ -3,6 +3,7 @@
 import { SUI_CONFIG } from './sui-config';
 import { Transaction } from '@mysten/sui/transactions';
 import { SuiClient } from '@mysten/sui/client';
+import { requestMonitor, monitoredApiCall } from './request-monitor';
 import { executeDappKitTransaction } from './dapp-kit-adapter';
 
 // Simple request limiter to prevent too many concurrent requests
@@ -11,7 +12,7 @@ class RequestLimiter {
   private running = 0;
   private maxConcurrent: number;
 
-  constructor(maxConcurrent = 2) {
+  constructor(maxConcurrent = 20) { // Maximized from 10 to 20 for optimal performance
     this.maxConcurrent = maxConcurrent;
   }
 
@@ -42,8 +43,9 @@ class RequestLimiter {
   }
 }
 
-// Create a global request limiter with increased concurrency
-const requestLimiter = new RequestLimiter(5); // Increased from 2 to 5 for faster loading
+// Create a global request limiter with optimized concurrency
+// Using 3 as a balance between performance and avoiding rate limits
+const requestLimiter = new RequestLimiter(3);
 
 // Define campaign interface
 export interface Campaign {
@@ -400,11 +402,17 @@ export async function getAllCampaigns(client: SuiClient): Promise<Campaign[]> {
 
         console.log(`Fetching registry object (attempt ${attempt + 1}/${maxRetries}):`, SUI_CONFIG.REGISTRY_ID);
         
-        // First, get the registry object with timeout
-        const fetchRegistryPromise = client.getObject({
-          id: SUI_CONFIG.REGISTRY_ID,
-          options: { showContent: true, showDisplay: true, showOwner: true }
-        });
+        // First, get the registry object with timeout and monitoring
+        // Use a shorter cache time (30 seconds) optimized for performance while maintaining freshness
+        const fetchRegistryPromise = monitoredApiCall(
+          'getObject/registry',
+          () => client.getObject({
+            id: SUI_CONFIG.REGISTRY_ID,
+            options: { showContent: true, showDisplay: true, showOwner: true }
+          }),
+          0, // No retries yet at this point
+          30000 // 30 second cache time - optimized for performance
+        );
         
         // Add timeout to the fetch operation
         const timeoutPromise = new Promise((_, reject) => {
@@ -472,10 +480,16 @@ export async function getAllCampaigns(client: SuiClient): Promise<Campaign[]> {
           const batchResults = await Promise.all(
             batch.map(async (id: string) => {
               try {
-                const campaignObj = await client.getObject({
-                  id,
-                  options: { showContent: true, showDisplay: true }
-                });
+                // Use monitored API call with minimal cache time for individual campaign objects
+                const campaignObj = await monitoredApiCall(
+                  `getObject/campaign/${id.substring(0, 8)}...`,
+                  () => client.getObject({
+                    id,
+                    options: { showContent: true, showDisplay: true }
+                  }),
+                  0, // No retries at this point
+                  15000 // 15 second cache time - optimized for maximum performance
+                );
                 
                 const campaignData = campaignObj.data?.content as any;
                 if (!campaignData) {
@@ -561,9 +575,11 @@ export async function getAllCampaigns(client: SuiClient): Promise<Campaign[]> {
           // Add valid campaigns from this batch to results
           results.push(...batchResults.filter(Boolean) as Campaign[]);
           
-          // Minimal delay between batches to maintain responsiveness
+          // Add absolute minimal delay between batches - just enough to prevent rate limiting
+          // Prioritize maximum performance
           if (i + concurrencyLimit < campaignIds.length) {
-            await new Promise(resolve => setTimeout(resolve, 100)); // Reduced from 5000ms to 100ms
+            console.log('Adding micro delay between batches...');
+            await new Promise(resolve => setTimeout(resolve, 50)); // Minimized to 50ms for maximum performance
           }
         }
         
@@ -603,21 +619,30 @@ export async function getCampaignDetails(client: SuiClient, campaignId: string):
     // Implement retry logic with exponential backoff
     let retries = 0;
     const maxRetries = 3;
+    let lastError: Error | null = null;
     
     while (retries <= maxRetries) {
       try {
         // Only add delay for actual retries, not for first attempt
         if (retries > 0) {
-          // Use a faster backoff strategy
-          const delay = Math.min(Math.pow(1.5, retries) * 300, 2000); // 300ms, 450ms, 675ms, max 2s
-          console.log(`Retry ${retries}/${maxRetries} for campaign ${campaignId}, waiting ${delay}ms...`);
+          // Use a more gradual backoff strategy with jitter to prevent thundering herd
+          const baseDelay = Math.min(Math.pow(2, retries) * 500, 5000); // 500ms, 1s, 2s, 4s, max 5s
+          const jitter = Math.random() * 300; // Add up to 300ms of random jitter
+          const delay = baseDelay + jitter;
+          console.log(`Retry ${retries}/${maxRetries} for campaign ${campaignId}, waiting ${Math.round(delay)}ms...`);
           await new Promise(resolve => setTimeout(resolve, delay));
         }
         
-        const campaign = await client.getObject({
-          id: campaignId,
-          options: { showContent: true }
-        });
+        // Use monitored API call with shorter cache time (20 seconds) optimized for performance
+        const campaign = await monitoredApiCall(
+          `getObject/${campaignId.substring(0, 8)}...`,
+          () => client.getObject({
+            id: campaignId,
+            options: { showContent: true }
+          }),
+          retries, // Pass the retry count for monitoring
+          20000 // 20 second cache time - optimized for maximum performance
+        );
         
         const campaignData = campaign.data?.content as any;
         if (!campaignData || !campaignData.fields) {
@@ -680,18 +705,92 @@ export async function getCampaignDetails(client: SuiClient, campaignId: string):
           creator: campaignData.fields.creator,
           createdAt: campaignData.fields.created_at
         };
+        
+        // Create a variable for the campaign result before caching
+        const campaignResult = {
+          id: campaignId,
+          name: campaignData.fields.name,
+          description: campaignData.fields.description,
+          imageUrl: imageUrl,
+          goalAmount: campaignData.fields.goal_amount,
+          currentAmount: raisedSUIRaw,
+          currentAmountSgUSD: raisedSgUSDRaw,
+          backerCount: campaignData.fields.backer_count || '0',
+          deadline: campaignData.fields.deadline,
+          category: campaignData.fields.category,
+          creator: campaignData.fields.creator,
+          createdAt: campaignData.fields.created_at
+        };
+        
+        // Cache the successful result in local storage
+        try {
+          if (typeof window !== 'undefined') {
+            // Store with a timestamp for cache invalidation
+            const cacheData = {
+              campaign: campaignResult,
+              timestamp: Date.now()
+            };
+            localStorage.setItem(`campaign_${campaignId}`, JSON.stringify(cacheData));
+          }
+        } catch (cacheError) {
+          console.warn('Failed to cache campaign data:', cacheError);
+        }
+        
+        return campaignResult;
       } catch (error: any) {
-        // Check if it's a rate limiting error (429)
-        if (error.message && (error.message.includes('429') || error.message.includes('Too Many Requests'))) {
-          console.warn(`Rate limiting error (attempt ${retries + 1}/${maxRetries + 1}):`, error.message);
+        lastError = error;
+        
+        // Categorize the error for better handling
+        const errorMessage = error.message || 'Unknown error';
+        
+        // Check if it's a network error (Failed to fetch)
+        if (errorMessage.includes('Failed to fetch') || 
+            errorMessage.includes('NetworkError') || 
+            errorMessage.includes('Network request failed')) {
+          console.warn(`Network error (attempt ${retries + 1}/${maxRetries + 1}) for campaign ${campaignId}:`, errorMessage);
           retries++;
           
-          // If we've reached max retries, give up and return null
+          // If we've reached max retries, check if we have cached data
           if (retries > maxRetries) {
-            console.error('Max retries reached for campaign fetch:', campaignId);
+            console.error('Max retries reached for network error:', campaignId);
+            // Try to get from local storage cache if available
+            try {
+              if (typeof window !== 'undefined') {
+                const cachedDataString = localStorage.getItem(`campaign_${campaignId}`);
+                if (cachedDataString) {
+                  const cachedData = JSON.parse(cachedDataString);
+                  // Check if cache is still valid (less than 30 minutes old)
+                  const cacheAge = Date.now() - cachedData.timestamp;
+                  if (cacheAge < 30 * 60 * 1000) { // 30 minutes in milliseconds
+                    console.log('Using cached campaign data for:', campaignId);
+                    return cachedData.campaign;
+                  } else {
+                    console.log('Cached campaign data expired for:', campaignId);
+                    localStorage.removeItem(`campaign_${campaignId}`);
+                  }
+                }
+              }
+            } catch (cacheError) {
+              console.error('Error accessing cache:', cacheError);
+            }
             return null;
           }
-          // Otherwise continue to retry after delay (handled at the start of the loop)
+          continue;
+        }
+        
+        // Check if it's a rate limiting error (429)
+        if (errorMessage.includes('429') || errorMessage.includes('Too Many Requests')) {
+          console.warn(`Rate limiting error (attempt ${retries + 1}/${maxRetries + 1}):`, errorMessage);
+          retries++;
+          
+          // Use a longer delay for rate limit errors
+          const rateLimit429Delay = 2000 + (retries * 1000);
+          await new Promise(resolve => setTimeout(resolve, rateLimit429Delay));
+          
+          if (retries > maxRetries) {
+            console.error('Max retries reached for rate limit:', campaignId);
+            return null;
+          }
           continue;
         }
         

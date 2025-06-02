@@ -277,8 +277,13 @@ export default function DonateWithSgUSD({
         isAnonymous
       };
       console.log('Showing NFT modal with data:', nftData);
-      setNFTData(nftData);
-      setShowNFTModal(true);
+      
+      // Force a small delay to ensure React state updates properly
+      setTimeout(() => {
+        setNFTData(nftData);
+        setShowNFTModal(true);
+        console.log('NFT modal state set to:', { showModal: true, data: nftData });
+      }, 100);
     } catch (error: any) {
       console.error("Error donating with sgUSD:", error);
       toast.error(

@@ -16,6 +16,7 @@ import { formatDistanceToNow, format } from "date-fns"
 import { WalletConnectButton } from "@/components/WalletConnectButton"
 import DonateWithSgUSD from "@/components/DonateWithSgUSD"
 import { useCampaignProgress } from "@/hooks/useCampaignProgress"
+import CampaignCharts from "@/components/CampaignCharts"
 
 // We'll fetch real campaigns instead of using hardcoded ones
 
@@ -365,7 +366,7 @@ export default function DonatePage() {
 
                 <div className="flex items-center justify-between text-sm text-gray-600 pt-4 border-t">
                   <div>
-                    <span className="font-medium">-</span> backers
+                    <span className="font-medium">{campaign.backerCount || '-'}</span> backers
                   </div>
                   <div>
                     Organized by <span className="font-medium">{campaign.creator.substring(0, 10)}...</span>
@@ -373,6 +374,15 @@ export default function DonatePage() {
                 </div>
               </div>
             </div>
+            
+            {/* Campaign Charts */}
+            <CampaignCharts 
+              name={campaign.name}
+              goalAmount={campaign.goalAmount}
+              raisedSUI={campaign.currentAmount || '0'}
+              raisedSgUSD={campaign.currentAmountSgUSD || '0'}
+              backerCount={typeof campaign.backerCount === 'string' ? parseInt(campaign.backerCount) || 0 : campaign.backerCount || 0}
+            />
 
             <div className="bg-white rounded-xl p-6 shadow-sm">
               <h2 className="text-xl font-bold mb-4 sui-navy-text">About This Project</h2>

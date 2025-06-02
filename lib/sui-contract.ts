@@ -1,14 +1,13 @@
 import { SUI_CONFIG } from './sui-config';
 import { Transaction } from '@mysten/sui/transactions';
-import { SuiClient } from '@mysten/sui/client';
+import { SuiClient, getFullnodeUrl } from '@mysten/sui/client';
 import { executeTransaction } from './wallet-adapter';
+import { requestMonitor } from './request-monitor';
 
-// Initialize Sui client (use testnet by default)
-// Use absolute URL for the proxy to avoid CORS issues
+// Initialize Sui client with official RPC endpoints
+// This uses the network specified in SUI_CONFIG and falls back to testnet
 const client = new SuiClient({ 
-  url: typeof window !== 'undefined' 
-    ? `${window.location.origin}/api/sui-proxy` 
-    : 'http://localhost:3000/api/sui-proxy'
+  url: getFullnodeUrl(SUI_CONFIG.NETWORK as 'testnet' | 'mainnet' | 'devnet' | 'localnet')
 });
 
 /**

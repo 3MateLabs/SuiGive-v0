@@ -56,7 +56,9 @@ export interface Campaign {
   goalAmount: string; // Using string for large numbers
   currentAmount: string; // SUI amount
   currentAmountSgUSD: string; // sgUSD amount
-  backerCount?: string;
+  raisedSUI?: string; // Alias for currentAmount for chart component
+  raisedSgUSD?: string; // Alias for currentAmountSgUSD for chart component
+  backerCount?: number; // Changed to number for chart component
   deadline: string;
   category: string;
   creator: string;
@@ -510,6 +512,7 @@ export async function getAllCampaigns(client: SuiClient): Promise<Campaign[]> {
                   imageUrl: ['image_url', 'imageUrl', 'image'],
                   goalAmount: ['goal_amount', 'goalAmount', 'goal'],
                   currentAmount: ['current_amount', 'currentAmount', 'raised', 'raised.value', 'raised.fields.value'],
+                  currentAmountSgUSD: ['current_amount_sgusd', 'currentAmountSgUSD', 'raised_sgusd', 'raisedSgUSD', 'sgUSDRaised'],
                   deadline: ['deadline', 'end_time', 'endTime'],
                   category: ['category', 'type'],
                   creator: ['creator', 'owner'],
@@ -553,17 +556,25 @@ export async function getAllCampaigns(client: SuiClient): Promise<Campaign[]> {
                 };
                 
                 // Extract campaign data with better error handling
+                const currentAmount = getFieldValue(fieldMap.currentAmount)?.toString() || '0';
+                const currentAmountSgUSD = getFieldValue(fieldMap.currentAmountSgUSD)?.toString() || '0';
+                
                 return {
                   id,
                   name: getFieldValue(fieldMap.name) || 'Unnamed Campaign',
                   description: getFieldValue(fieldMap.description) || 'No description provided',
                   imageUrl: getFieldValue(fieldMap.imageUrl) || '',
                   goalAmount: getFieldValue(fieldMap.goalAmount)?.toString() || '0',
-                  currentAmount: getFieldValue(fieldMap.currentAmount)?.toString() || '0',
+                  currentAmount,
+                  currentAmountSgUSD,
+                  // Add aliases for chart components
+                  raisedSUI: currentAmount,
+                  raisedSgUSD: currentAmountSgUSD,
                   deadline: getFieldValue(fieldMap.deadline)?.toString() || '0',
                   category: getFieldValue(fieldMap.category) || 'Uncategorized',
                   creator: getFieldValue(fieldMap.creator) || 'Unknown',
-                  createdAt: getFieldValue(fieldMap.createdAt)?.toString() || Date.now().toString()
+                  createdAt: getFieldValue(fieldMap.createdAt)?.toString() || Date.now().toString(),
+                  backerCount: 0 // Default value, will be updated later if available
                 };
               } catch (error) {
                 console.error(`Error fetching campaign ${id}:`, error);

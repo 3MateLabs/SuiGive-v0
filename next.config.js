@@ -1,24 +1,12 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  // Ensure transpilation works correctly for all dependencies
+  transpilePackages: ['framer-motion'],
+  // Configure external image domains if needed
   images: {
-    domains: [
-      'pbs.twimg.com',      // Twitter images
-      'i.imgur.com',        // Imgur
-      'images.unsplash.com', // Unsplash
-      'cloudflare-ipfs.com', // IPFS via Cloudflare
-      'ipfs.io',            // IPFS
-      'arweave.net',        // Arweave
-      'storage.googleapis.com', // Google Cloud Storage
-      's3.amazonaws.com',   // AWS S3
-    ],
-    remotePatterns: [
-      {
-        protocol: 'https',
-        hostname: '**',
-      },
-    ],
+    domains: ['ipfs.io', 'cloudflare-ipfs.com', 'gateway.pinata.cloud', 'dweb.link'],
   },
-};
+}
 
-module.exports = nextConfig;
+module.exports = nextConfig

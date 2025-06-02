@@ -1,37 +1,29 @@
 "use client"
 
 import React, { useState, useEffect } from 'react';
+import { 
+  Chart as ChartJS, 
+  ArcElement, 
+  Tooltip, 
+  Legend,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Title
+} from 'chart.js';
+import { Doughnut, Bar } from 'react-chartjs-2';
 import { motion } from 'framer-motion';
-import dynamic from 'next/dynamic';
 
-// Dynamically import chart.js and react-chartjs-2 to avoid SSR issues
-const DynamicDoughnut = dynamic(() => import('react-chartjs-2').then(mod => mod.Doughnut), {
-  ssr: false,
-});
-
-const DynamicBar = dynamic(() => import('react-chartjs-2').then(mod => mod.Bar), {
-  ssr: false,
-});
-
-// Create a component that will register Chart.js components
-const ChartJSRegister = () => {
-  useEffect(() => {
-    // Import and register Chart.js components only on the client side
-    import('chart.js').then(({ Chart, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement, Title }) => {
-      Chart.register(
-        ArcElement,
-        Tooltip,
-        Legend,
-        CategoryScale,
-        LinearScale,
-        BarElement,
-        Title
-      );
-    });
-  }, []);
-  
-  return null;
-};
+// Register the required Chart.js components
+ChartJS.register(
+  ArcElement, 
+  Tooltip, 
+  Legend,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Title
+);
 
 interface CampaignChartsProps {
   name: string;
@@ -48,12 +40,6 @@ export default function CampaignCharts({
   raisedSgUSD,
   backerCount
 }: CampaignChartsProps) {
-  // Register Chart.js components
-  const [isClient, setIsClient] = useState(false);
-  
-  useEffect(() => {
-    setIsClient(true);
-  }, []);
   // Convert string amounts to numbers for chart data and fix formatting
   // Divide by 10^9 to convert from Sui's smallest unit to whole units
   const raisedSgUSDValue = parseFloat(raisedSgUSD) / 1_000_000_000;
@@ -273,7 +259,7 @@ export default function CampaignCharts({
         >
           <h3 className="text-sm font-medium mb-4 text-gray-500">Donation Breakdown</h3>
           <div className="aspect-square w-full max-w-[220px] mx-auto">
-            {isClient && <DynamicDoughnut data={donationBreakdownData} options={doughnutOptions} />}
+            <Doughnut data={donationBreakdownData} options={doughnutOptions} />
           </div>
           <div className="mt-4 text-center text-xs text-gray-500">
             <p>Progress: <span className="font-medium">{percentageComplete}%</span> of goal</p>
@@ -290,8 +276,7 @@ export default function CampaignCharts({
           className="bg-white rounded-lg"
         >
           <h3 className="text-sm font-medium mb-4 text-gray-500">Funding Progress</h3>
-          {isClient && <DynamicBar data={fundingProgressData} options={barOptions} />}
-          <ChartJSRegister />
+          <Bar data={fundingProgressData} options={barOptions} />
           <div className="mt-4 text-center text-sm">
             <p className="text-gray-500">
               {percentageComplete >= 100 

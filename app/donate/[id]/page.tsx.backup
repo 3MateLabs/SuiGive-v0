@@ -16,7 +16,6 @@ import { formatDistanceToNow, format } from "date-fns"
 import { WalletConnectButton } from "@/components/WalletConnectButton"
 import DonateWithSgUSD from "@/components/DonateWithSgUSD"
 import { useCampaignProgress } from "@/hooks/useCampaignProgress"
-import CampaignCharts from "@/components/CampaignCharts"
 
 // We'll fetch real campaigns instead of using hardcoded ones
 
@@ -366,7 +365,7 @@ export default function DonatePage() {
 
                 <div className="flex items-center justify-between text-sm text-gray-600 pt-4 border-t">
                   <div>
-                    <span className="font-medium">{campaign.backerCount || '-'}</span> backers
+                    <span className="font-medium">-</span> backers
                   </div>
                   <div>
                     Organized by <span className="font-medium">{campaign.creator.substring(0, 10)}...</span>
@@ -374,15 +373,6 @@ export default function DonatePage() {
                 </div>
               </div>
             </div>
-            
-            {/* Campaign Charts */}
-            <CampaignCharts 
-              name={campaign.name}
-              goalAmount={campaign.goalAmount}
-              raisedSUI={campaign.currentAmount || '0'}
-              raisedSgUSD={campaign.currentAmountSgUSD || '0'}
-              backerCount={typeof campaign.backerCount === 'string' ? parseInt(campaign.backerCount) || 0 : campaign.backerCount || 0}
-            />
 
             <div className="bg-white rounded-xl p-6 shadow-sm">
               <h2 className="text-xl font-bold mb-4 sui-navy-text">About This Project</h2>
@@ -401,120 +391,132 @@ export default function DonatePage() {
           <div className="md:col-span-2 space-y-6">
             <div className="bg-white rounded-xl p-6 shadow-sm sticky top-24">
               {/* Import and use the new DonateWithSgUSD component */}
-              {campaign && (
-                <div>
-                  <h2 className="text-xl font-bold mb-6 sui-navy-text">Make a Donation</h2>
-                  
-                  {!connected ? (
-                    <div className="space-y-4 mb-6">
-                      <p className="text-sm text-gray-600 mb-4">
-                        Connect your wallet to donate with SUI or sgUSD tokens.
-                      </p>
-                      <WalletConnectButton variant="donation" className="w-full" />
-                    </div>
-                  ) : (
-                    <div>
-                      {/* Use the new DonateWithSgUSD component */}
-                      <DonateWithSgUSD 
-                        campaignId={campaign.id} 
-                        campaignName={campaign.name} 
-                        onDonationComplete={handleDonationComplete}
-                      />
-                    </div>
-                  )}
-                </div>
-              )}
-
-              <div className="mt-4 flex justify-center">
-                <button 
-                  onClick={() => setShowShareModal(true)}
-                  className="flex items-center text-sm text-gray-600 hover:text-sui-navy transition-colors"
-                >
-                  <Share2 className="mr-1 h-4 w-4" />
-                  Share this project
-                </button>
-              </div>
+              <h3 className="text-lg font-bold mb-4 sui-navy-text">Support this project</h3>
               
-              {/* Share Modal */}
-              {showShareModal && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={() => setShowShareModal(false)}>
-                  <div 
-                    ref={shareModalRef}
-                    className="bg-white rounded-xl p-6 max-w-md w-full mx-4 relative" 
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <button 
-                      onClick={() => setShowShareModal(false)}
-                      className="absolute top-4 right-4 text-gray-500 hover:text-gray-700"
-                    >
-                      <X className="h-5 w-5" />
-                    </button>
-                    
-                    <h3 className="text-xl font-bold mb-4 sui-navy-text">Share this campaign</h3>
-                    
-                    <div className="mb-6">
-                      <p className="text-sm text-gray-600 mb-2">Campaign URL:</p>
-                      <div className="flex">
-                        <input 
-                          type="text" 
-                          readOnly 
-                          value={typeof window !== 'undefined' ? window.location.href : ''}
-                          className="flex-1 p-2 text-sm border rounded-l-md focus:outline-none focus:ring-1 focus:ring-sui-blue"
-                        />
-                        <button 
-                          onClick={() => {
-                            navigator.clipboard.writeText(window.location.href)
-                            toast.success('Link copied to clipboard!')
-                          }}
-                          className="bg-sui-navy text-white p-2 rounded-r-md hover:bg-opacity-90"
-                        >
-                          <Copy className="h-4 w-4" />
-                        </button>
-                      </div>
+              {/* Check if campaign is already filled */}
+              {progress >= 100 ? (
+                  <div className="text-center p-4 border border-green-200 bg-green-50 rounded-lg">
+                    <div className="flex items-center justify-center mb-2 text-green-600">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <span className="font-medium">Campaign Goal Reached!</span>
                     </div>
+                    <p className="text-sm text-gray-700">
+                      This campaign has already reached its funding goal of {goalAmountFormatted} sgUSD. Thank you for your interest!
+                    </p>
+                    <div className="mt-4">
+                      <Link href="/" className="text-sm text-blue-600 hover:underline">
+                        Discover other campaigns to support
+                      </Link>
+                    </div>
+                  </div>
+                ) : !connected ? (
+                  <div className="text-center p-4 border border-gray-200 rounded-lg">
+                    <p className="text-sm text-gray-600 mb-4">
+                      Connect your wallet to donate with SUI or sgUSD tokens.
+                    </p>
+                    <WalletConnectButton variant="donation" className="w-full" />
+                  </div>
+                ) : (
+                  <div>
+                    {/* Use the new DonateWithSgUSD component with campaign progress data */}
+                    <DonateWithSgUSD 
+                      campaignId={campaign.id} 
+                      campaignName={campaign.name} 
+                      currentAmount={campaign.currentAmountSgUSD}
+                      goalAmount={campaign.goalAmount}
+                      onDonationComplete={handleDonationComplete}
+                    />
+                  </div>
+                )}
+            </div>
+            <div className="mt-4 flex justify-center">
+              <button 
+                onClick={() => setShowShareModal(true)}
+                className="flex items-center text-sm text-gray-600 hover:text-sui-navy transition-colors"
+              >
+                <Share2 className="mr-1 h-4 w-4" />
+                Share this project
+              </button>
+            </div>
+              
+            {/* Share Modal */}
+            {showShareModal && (
+              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={() => setShowShareModal(false)}>
+                <div 
+                  ref={shareModalRef}
+                  className="bg-white rounded-xl p-6 max-w-md w-full mx-4 relative" 
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <button 
+                    onClick={() => setShowShareModal(false)}
+                    className="absolute top-4 right-4 text-gray-500 hover:text-gray-700"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+                  
+                  <h3 className="text-xl font-bold mb-4 sui-navy-text">Share this campaign</h3>
+                  
+                  <div className="mb-6">
+                    <p className="text-sm text-gray-600 mb-2">Campaign URL:</p>
+                    <div className="flex">
+                      <input 
+                        type="text" 
+                        readOnly 
+                        value={typeof window !== 'undefined' ? window.location.href : ''}
+                        className="flex-1 p-2 text-sm border rounded-l-md focus:outline-none focus:ring-1 focus:ring-sui-blue"
+                      />
+                      <button 
+                        onClick={() => {
+                          navigator.clipboard.writeText(window.location.href)
+                          toast.success('Link copied to clipboard!')
+                        }}
+                        className="bg-sui-navy text-white p-2 rounded-r-md hover:bg-opacity-90"
+                      >
+                        <Copy className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
                     
-                    <div>
-                      <p className="text-sm text-gray-600 mb-3">Share on social media:</p>
-                      <div className="flex space-x-4 justify-center">
-                        <a 
-                          href={`https://twitter.com/intent/tweet?text=Support this campaign: ${campaign?.name}&url=${encodeURIComponent(typeof window !== 'undefined' ? window.location.href : '')}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="p-3 bg-[#1DA1F2] text-white rounded-full hover:bg-opacity-90"
-                        >
-                          <Twitter className="h-5 w-5" />
-                        </a>
-                        <a 
-                          href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(typeof window !== 'undefined' ? window.location.href : '')}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="p-3 bg-[#1877F2] text-white rounded-full hover:bg-opacity-90"
-                        >
-                          <Facebook className="h-5 w-5" />
-                        </a>
-                        <a 
-                          href={`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(typeof window !== 'undefined' ? window.location.href : '')}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="p-3 bg-[#0A66C2] text-white rounded-full hover:bg-opacity-90"
-                        >
-                          <Linkedin className="h-5 w-5" />
-                        </a>
-                      </div>
+                  <div>
+                    <p className="text-sm text-gray-600 mb-3">Share on social media:</p>
+                    <div className="flex space-x-3">
+                      <a 
+                        href={`https://twitter.com/intent/tweet?url=${encodeURIComponent(typeof window !== 'undefined' ? window.location.href : '')}&text=Check out this campaign on SuiGive: ${campaign.name}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="p-3 bg-[#1DA1F2] text-white rounded-full hover:bg-opacity-90"
+                      >
+                        <Twitter className="h-5 w-5" />
+                      </a>
+                      
+                      <a 
+                        href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(typeof window !== 'undefined' ? window.location.href : '')}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="p-3 bg-[#4267B2] text-white rounded-full hover:bg-opacity-90"
+                      >
+                        <Facebook className="h-5 w-5" />
+                      </a>
+                      
+                      <a 
+                        href={`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(typeof window !== 'undefined' ? window.location.href : '')}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="p-3 bg-[#0A66C2] text-white rounded-full hover:bg-opacity-90"
+                      >
+                        <Linkedin className="h-5 w-5" />
+                      </a>
                     </div>
                   </div>
                 </div>
-              )}
-
-              <div className="mt-6 text-xs text-center text-gray-500">
-                By donating, you agree to our terms of service and privacy policy. All transactions are secure and
-                processed on the Sui blockchain.
               </div>
             </div>
           </div>
         </div>
       </main>
-
+      <Footer />
     </div>
   )
 }

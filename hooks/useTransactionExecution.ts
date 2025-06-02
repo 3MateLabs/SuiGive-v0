@@ -208,40 +208,51 @@ export function useTransactionExecution(): TransactionExecutionHook {
     message: string = '',
     isAnonymous: boolean = false
   ): Promise<TransactionOutput> => {
-    console.log('Donating with sgUSD using transaction hook...');
+    console.log('Donating with sgUSD using transaction hook...', {
+      campaignId,
+      coinObjectId,
+      amount,
+      message,
+      isAnonymous
+    });
     
     // Check wallet connection
     checkWalletConnection();
     
-    // Create a new transaction
-    const tx = new Transaction();
-    
-    // Set explicit gas budget to avoid automatic budget determination issues
-    tx.setGasBudget(10000000);
-    
-    // Get the campaign object
-    const campaign = tx.object(campaignId);
-    
-    // Get the sgUSD coin object
-    const sgUSDCoin = tx.object(coinObjectId);
-    
-    // First split the coin to get only the amount we want to donate
-    // This is critical - otherwise the entire coin will be donated
-    const splitCoin = tx.splitCoins(sgUSDCoin, [tx.pure.u64(amount)]);
-    
-    // Add the move call to donate with sgUSD using only the split portion
-    tx.moveCall({
-      target: `${SUI_CONFIG.PACKAGE_ID}::crowdfunding::donate_sgusd`,
-      arguments: [
-        campaign,
-        splitCoin,  // Use the split coin with the exact amount
-        tx.pure.string(message),  // Use the provided message
-        tx.pure.bool(isAnonymous),
-      ],
-    });
-    
     try {
+      // Create a new transaction
+      const tx = new Transaction();
+      
+      // Set explicit gas budget to avoid automatic budget determination issues
+      tx.setGasBudget(10000000);
+      
+      // Get the campaign object
+      const campaign = tx.object(campaignId);
+      console.log('Campaign object created');
+      
+      // Get the sgUSD coin object
+      const sgUSDCoin = tx.object(coinObjectId);
+      console.log('sgUSD coin object created');
+      
+      // First split the coin to get only the amount we want to donate
+      // This is critical - otherwise the entire coin will be donated
+      const splitCoin = tx.splitCoins(sgUSDCoin, [tx.pure.u64(amount)]);
+      console.log('Split coin created for amount:', amount);
+      
+      // Add the move call to donate with sgUSD using only the split portion
+      tx.moveCall({
+        target: `${SUI_CONFIG.PACKAGE_ID}::crowdfunding::donate_sgusd`,
+        arguments: [
+          campaign,
+          splitCoin,  // Use the split coin with the exact amount
+          tx.pure.string(message),  // Use the provided message
+          tx.pure.bool(isAnonymous),
+        ],
+      });
+      console.log('Move call added to transaction');
+      
       // Execute the transaction using our helper function
+      console.log('Executing transaction...');
       const result = await executeTransaction(tx);
       console.log('sgUSD Donation executed successfully:', result);
       return result as TransactionOutput;

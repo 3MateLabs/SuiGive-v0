@@ -5,6 +5,7 @@ import AboutSection from "@/components/about-section"
 import HowItWorksSection from "@/components/how-it-works"
 import CompletedCrowdfunds from "@/components/completed-crowdfunds"
 import Footer from "@/components/footer"
+import DashboardChartsWrapper from "@/components/DashboardChartsWrapper"
 
 export default function Home() {
   return (
@@ -12,6 +13,7 @@ export default function Home() {
       <Navbar />
       <Hero />
       <NewestEvents />
+      <DashboardChartsWrapper />
       <AboutSection />
       <HowItWorksSection />
       <CompletedCrowdfunds />

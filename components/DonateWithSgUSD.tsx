@@ -11,6 +11,7 @@ import { useCampaignProgress } from '@/hooks/useCampaignProgress';
 import { toast } from "react-hot-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Card,
   CardContent,
@@ -46,6 +47,8 @@ export default function DonateWithSgUSD({
   const isCampaignFullyFunded = progress >= 100;
 
   const [sgUSDAmount, setSgUSDAmount] = useState<string>("10");
+  const [donationMessage, setDonationMessage] = useState<string>("");
+  const [isAnonymous, setIsAnonymous] = useState<boolean>(false);
   const [selectedCoinId, setSelectedCoinId] = useState<string>("");
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
@@ -180,7 +183,8 @@ export default function DonateWithSgUSD({
     }
 
     // Convert to smallest units (9 decimals)
-    const amountInUnits = (amountValue * 1_000_000_000).toString();
+    const amountInUnits = Math.floor(amountValue * 1_000_000_000);
+    console.log("Donation amount in units:", amountInUnits);
 
     // Check if selected coin has enough balance
     const selectedCoin = sgUSDCoinsData.find(
@@ -205,13 +209,21 @@ export default function DonateWithSgUSD({
       setIsLoading(true);
       toast.loading("Processing sgUSD donation...", { id: "donation" });
 
+      console.log("Donation parameters:", {
+        campaignId,
+        selectedCoinId,
+        amountInUnits,
+        donationMessage,
+        isAnonymous
+      });
+
       // Execute the donation transaction
       const result = await donateSgUSD(
         campaignId,
         selectedCoinId,
-        Number(amountInUnits),
-        "",
-        false
+        amountInUnits, // Pass as number, not string
+        donationMessage,
+        isAnonymous
       );
 
       toast.success("sgUSD donation successful!", { id: "donation" });
@@ -221,9 +233,7 @@ export default function DonateWithSgUSD({
       console.log("Donation successful, amount:", parseFloat(sgUSDAmount));
 
       // Calculate donation amount in blockchain units for the callback
-      const donationAmountInUnits = Math.floor(
-        parseFloat(sgUSDAmount) * 1_000_000_000
-      ).toString();
+      const donationAmountInUnits = amountInUnits.toString();
 
       // Use setTimeout to prevent React update loops when calling the callback
       // This breaks the synchronous update cycle that can cause infinite loops
@@ -239,15 +249,18 @@ export default function DonateWithSgUSD({
       try {
         // Look for created objects in the transaction effects
         const createdObjects = result.effects?.created || [];
-        // Find the NFT receipt object (typically has the donation_receipt type)
+        // Find the NFT receipt object (it will have the donation_receipt::DonationReceipt type)
         const nftObject = createdObjects.find((obj: any) => 
           obj.owner === 'Owned' && 
           obj.reference?.objectId && 
-          obj.type?.includes('donation_receipt')
+          obj.type?.includes(`${SUI_CONFIG.PACKAGE_ID}::donation_receipt::DonationReceipt`)
         );
         
         if (nftObject?.reference?.objectId) {
           nftObjectId = nftObject.reference.objectId;
+          console.log('Found NFT receipt object ID:', nftObjectId);
+        } else {
+          console.warn('No NFT receipt object found in transaction effects:', result.effects);
         }
       } catch (error) {
         console.error('Error extracting NFT object ID:', error);
@@ -259,8 +272,12 @@ export default function DonateWithSgUSD({
         campaignName,
         timestamp: Date.now(),
         ipfsHash: 'bafkreiap7rugqtnfnw5nlui4aavtrj6zrqbxzzanq44sxnztktm3kzdufi',
-        objectId: nftObjectId
+        objectId: nftObjectId,
+        message: donationMessage,
+        isAnonymous
       };
+      console.log('Showing NFT modal with data:', nftData);
+      setNFTData(nftData);
       setShowNFTModal(true);
     } catch (error: any) {
       console.error("Error donating with sgUSD:", error);
@@ -359,14 +376,16 @@ export default function DonateWithSgUSD({
   };
 
   // State for NFT receipt modal
-  const [showNFTModal, setShowNFTModal] = useState(false);
-  const [nftData, setNftData] = useState({
-    amount: '',
-    campaignName: '',
-    timestamp: Date.now(),
-    ipfsHash: 'bafkreiap7rugqtnfnw5nlui4aavtrj6zrqbxzzanq44sxnztktm3kzdufi',
-    objectId: ''
-  });
+  const [showNFTModal, setShowNFTModal] = useState<boolean>(false);
+  const [nftData, setNFTData] = useState<{
+    amount: string;
+    campaignName: string;
+    timestamp: number;
+    ipfsHash: string;
+    objectId?: string;
+    message?: string;
+    isAnonymous?: boolean;
+  } | null>(null);
 
   // Render appropriate UI based on wallet connection and balance state
   const renderDonationUI = () => {
@@ -488,40 +507,94 @@ export default function DonateWithSgUSD({
     // State 3: Wallet connected with sufficient balance
     return (
       <div className="space-y-6">
-        <div className="space-y-2">
-          <div className="flex justify-between">
-            <Label htmlFor="sgUSDAmount">Amount (sgUSD)</Label>
-            <span className="text-sm text-gray-500">
-              Balance: {sgUSDBalance} sgUSD
-            </span>
+        <div className="space-y-6">
+          <div className="space-y-2">
+            <div className="flex justify-between">
+              <Label htmlFor="sgUSDAmount">Amount (sgUSD)</Label>
+              <span className="text-sm text-gray-500">
+                Balance: {sgUSDBalance} sgUSD
+              </span>
+            </div>
+            <Input
+              id="sgUSDAmount"
+              type="number"
+              min="0.01"
+              step="1"
+              value={sgUSDAmount}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                setSgUSDAmount(e.target.value)
+              }
+              placeholder="Enter amount in sgUSD"
+            />
           </div>
-          <Input
-            id="sgUSDAmount"
-            type="number"
-            min="0.01"
-            step="1"
-            value={sgUSDAmount}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-              setSgUSDAmount(e.target.value)
-            }
-            placeholder="Enter amount in sgUSD"
-          />
+
+          <div className="space-y-2">
+            <Label htmlFor="donationMessage">Message (optional)</Label>
+            <textarea
+              id="donationMessage"
+              className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              value={donationMessage}
+              onChange={(e) => setDonationMessage(e.target.value)}
+              placeholder="Add a message to be included with your donation..."
+              maxLength={200}
+            />
+            <p className="text-xs text-gray-500 text-right">
+              {donationMessage.length}/200 characters
+            </p>
+          </div>
+
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="anonymous"
+              checked={isAnonymous}
+              onCheckedChange={(checked) => setIsAnonymous(checked as boolean)}
+            />
+            <label
+              htmlFor="anonymous"
+              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+            >
+              Make this donation anonymous
+            </label>
+          </div>
         </div>
 
-        <Button
-          className="w-full bg-black hover:bg-gray-800 text-white"
-          onClick={handlePreDonate}
-          disabled={isLoading}
-        >
-          {isLoading ? (
-            <>
-              <span className="mr-2 inline-block h-4 w-4 animate-spin rounded-full border-2 border-solid border-white border-r-transparent align-[-0.125em]"></span>
-              Processing...
-            </>
-          ) : (
-            "Donate sgUSD (testnet)"
-          )}
-        </Button>
+        <div className="flex flex-col space-y-2">
+          <Button
+            className="w-full bg-black hover:bg-gray-800 text-white"
+            onClick={handlePreDonate}
+            disabled={isLoading}
+          >
+            {isLoading ? (
+              <>
+                <span className="mr-2 inline-block h-4 w-4 animate-spin rounded-full border-2 border-solid border-white border-r-transparent align-[-0.125em]"></span>
+                Processing...
+              </>
+            ) : (
+              "Donate sgUSD (testnet)"
+            )}
+          </Button>
+          
+          <div className="mt-2 pt-2 border-t border-gray-200">
+            <div className="flex justify-between items-center mb-2">
+              <span className="text-sm text-gray-600">Need more tokens?</span>
+              <span className="text-sm font-medium">{sgUSDBalance} sgUSD available</span>
+            </div>
+            <Button
+              className="w-full bg-gray-200 hover:bg-gray-300 text-black"
+              onClick={mintSgUSD}
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <>
+                  <span className="mr-2 inline-block h-4 w-4 animate-spin rounded-full border-2 border-solid border-black border-r-transparent align-[-0.125em]"></span>
+                  Processing...
+                </>
+              ) : (
+                "Mint sgUSD (testnet)"
+              )}
+            </Button>
+          </div>
+        </div>
       </div>
     );
   };
@@ -564,11 +637,16 @@ export default function DonateWithSgUSD({
       </AlertDialog>
 
       {/* NFT Receipt Modal */}
-      <NFTReceiptModal 
-        isOpen={showNFTModal}
-        onClose={() => setShowNFTModal(false)}
-        donationData={nftData}
-      />
+      {nftData && (
+        <NFTReceiptModal
+          isOpen={showNFTModal}
+          onClose={() => {
+            setShowNFTModal(false);
+            setNFTData(null);
+          }}
+          donationData={nftData}
+        />
+      )}
     </>
   );
 }

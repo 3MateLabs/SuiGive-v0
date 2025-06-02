@@ -1,0 +1,5 @@
+{
+  "buildCommand": "npm install chart.js react-chartjs-2 framer-motion && next build",
+  "installCommand": "npm install --legacy-peer-deps",
+  "framework": "nextjs"
+}

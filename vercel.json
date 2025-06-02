@@ -1,15 +1,1 @@
-{
-  "buildCommand": "npm install --legacy-peer-deps && next build",
-  "installCommand": "npm install --legacy-peer-deps",
-  "framework": "nextjs",
-  "builds": [
-    {
-      "src": "package.json",
-      "use": "@vercel/next",
-      "config": {
-        "maxLambdaSize": "15mb",
-        "memory": 3008
-      }
-    }
-  ]
-}
+{}

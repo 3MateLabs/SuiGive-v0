@@ -28,6 +28,8 @@ export default function TopDonors({ limit = 10 }: TopDonorsProps) {
         const response = await fetch(`/api/users?top=${limit}`);
         const data = await response.json();
         
+        console.log('Top donors API response:', data);
+        
         if (data.users) {
           setDonors(data.users);
         }

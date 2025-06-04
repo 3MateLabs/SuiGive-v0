@@ -68,6 +68,14 @@ export async function saveDonation(donation: {
   transactionId: string;
 }) {
   try {
+    console.log('Saving donation to database:', {
+      campaignId: donation.campaignId,
+      donorAddress: donation.donorAddress,
+      amount: donation.amount,
+      currency: donation.currency,
+      isAnonymous: donation.isAnonymous
+    });
+    
     // Start a transaction to ensure data consistency
     return await prisma.$transaction(async (tx) => {
       // 1. Create the donation record
@@ -199,11 +207,13 @@ export async function getUserStats(userAddress: string) {
 // Function to get top donors
 export async function getTopDonors(limit: number = 10) {
   try {
-    return await prisma.user.findMany({
+    // First log to debug database connection
+    console.log('Fetching top donors from database...');
+    
+    const users = await prisma.user.findMany({
       orderBy: {
-        // We need to sort as numbers, not strings
-        // This is a workaround since we're storing amounts as strings
-        donationCount: 'desc',
+        // Sort by total donated amount instead of count
+        totalDonated: 'desc',
       },
       take: limit,
       select: {
@@ -214,6 +224,9 @@ export async function getTopDonors(limit: number = 10) {
         donationCount: true,
       },
     });
+    
+    console.log(`Found ${users.length} users in database`);
+    return users;
   } catch (error) {
     console.error('Error fetching top donors:', error);
     throw error;

@@ -203,7 +203,7 @@ export async function donate(
     // Save donation to database for history tracking
     try {
       // Import dynamically to avoid circular dependencies
-      const { saveDonation } = await import('./db');
+      const { prisma, saveDonation } = await import('./db');
       
       // Get the donor address from the wallet
       const donorAddress = wallet.address || wallet.currentAccount?.address;
@@ -212,18 +212,77 @@ export async function donate(
         // Extract transaction ID
         const transactionId = result.digest;
         
-        // Save donation to database
-        await saveDonation({
-          campaignId,
-          donorAddress,
-          amount: amount.toString(),
-          currency: 'SUI',
-          message,
-          isAnonymous,
-          transactionId,
-        });
+        console.log('Blockchain transaction successful, preparing to save donation to database');
         
-        console.log('Donation saved to database');
+        // First, ensure the user exists in the database before attempting to save the donation
+        // This helps prevent foreign key constraint errors
+        try {
+          // Check if user exists
+          const user = await prisma.user.findUnique({
+            where: { address: donorAddress },
+          });
+          
+          const now = new Date();
+          
+          // If user doesn't exist, create them first
+          if (!user && !isAnonymous) {
+            console.log('Creating new user in database:', donorAddress);
+            await prisma.user.create({
+              data: {
+                address: donorAddress,
+                totalDonated: '0', // Will be updated by saveDonation
+                donationCount: 0,  // Will be updated by saveDonation
+                firstDonation: now,
+                lastDonation: now,
+              },
+            });
+            console.log('User created successfully');
+          }
+          
+          // Check if campaign exists
+          const campaignExists = await prisma.campaign.findUnique({
+            where: { id: campaignId },
+          });
+          
+          // If campaign doesn't exist in database, create a placeholder
+          if (!campaignExists) {
+            console.log('Creating placeholder campaign in database:', campaignId);
+            await prisma.campaign.create({
+              data: {
+                id: campaignId,
+                name: `Campaign ${campaignId.substring(0, 8)}`,
+                description: 'Automatically created campaign',
+                imageUrl: 'https://placehold.co/600x400?text=Campaign',
+                goalAmount: '10000000000', // 10 SUI
+                currentAmount: '0',
+                creator: donorAddress,
+                deadline: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
+                category: 'Other',
+                backerCount: 0,
+              },
+            });
+            console.log('Campaign placeholder created successfully');
+          }
+          
+          // Now save the donation with confidence that foreign keys exist
+          console.log('Saving donation to database');
+          await saveDonation({
+            campaignId,
+            donorAddress,
+            amount: amount.toString(),
+            currency: 'SUI',
+            message,
+            isAnonymous,
+            transactionId,
+          });
+          
+          console.log('Donation saved to database successfully');
+        } catch (userError) {
+          console.error('Error ensuring user/campaign exists:', userError);
+          throw userError; // Re-throw to be caught by outer try-catch
+        }
+      } else {
+        console.warn('Cannot save donation: missing donor address or transaction failed');
       }
     } catch (dbError) {
       // Log database error but don't fail the transaction
@@ -278,7 +337,7 @@ export async function donateSgUSD(
     // Save donation to database for history tracking
     try {
       // Import dynamically to avoid circular dependencies
-      const { saveDonation } = await import('./db');
+      const { prisma, saveDonation } = await import('./db');
       
       // Get the donor address from the wallet
       const donorAddress = wallet.address || wallet.currentAccount?.address;
@@ -287,18 +346,77 @@ export async function donateSgUSD(
         // Extract transaction ID
         const transactionId = result.digest;
         
-        // Save donation to database
-        await saveDonation({
-          campaignId,
-          donorAddress,
-          amount: amount.toString(),
-          currency: 'sgUSD',
-          message,
-          isAnonymous,
-          transactionId,
-        });
+        console.log('Blockchain transaction successful, preparing to save sgUSD donation to database');
         
-        console.log('sgUSD donation saved to database');
+        // First, ensure the user exists in the database before attempting to save the donation
+        // This helps prevent foreign key constraint errors
+        try {
+          // Check if user exists
+          const user = await prisma.user.findUnique({
+            where: { address: donorAddress },
+          });
+          
+          const now = new Date();
+          
+          // If user doesn't exist, create them first
+          if (!user && !isAnonymous) {
+            console.log('Creating new user in database:', donorAddress);
+            await prisma.user.create({
+              data: {
+                address: donorAddress,
+                totalDonated: '0', // Will be updated by saveDonation
+                donationCount: 0,  // Will be updated by saveDonation
+                firstDonation: now,
+                lastDonation: now,
+              },
+            });
+            console.log('User created successfully');
+          }
+          
+          // Check if campaign exists
+          const campaignExists = await prisma.campaign.findUnique({
+            where: { id: campaignId },
+          });
+          
+          // If campaign doesn't exist in database, create a placeholder
+          if (!campaignExists) {
+            console.log('Creating placeholder campaign in database:', campaignId);
+            await prisma.campaign.create({
+              data: {
+                id: campaignId,
+                name: `Campaign ${campaignId.substring(0, 8)}`,
+                description: 'Automatically created campaign',
+                imageUrl: 'https://placehold.co/600x400?text=Campaign',
+                goalAmount: '10000000000', // 10 SUI
+                currentAmount: '0',
+                creator: donorAddress,
+                deadline: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
+                category: 'Other',
+                backerCount: 0,
+              },
+            });
+            console.log('Campaign placeholder created successfully');
+          }
+          
+          // Now save the donation with confidence that foreign keys exist
+          console.log('Saving sgUSD donation to database');
+          await saveDonation({
+            campaignId,
+            donorAddress,
+            amount: amount.toString(),
+            currency: 'sgUSD',
+            message,
+            isAnonymous,
+            transactionId,
+          });
+          
+          console.log('sgUSD donation saved to database successfully');
+        } catch (userError) {
+          console.error('Error ensuring user/campaign exists:', userError);
+          throw userError; // Re-throw to be caught by outer try-catch
+        }
+      } else {
+        console.warn('Cannot save donation: missing donor address or transaction failed');
       }
     } catch (dbError) {
       // Log database error but don't fail the transaction

@@ -1,0 +1,74 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DATABASE_DIRECT_URL")
+}
+
+// Campaign model - stores campaign information from blockchain
+model Campaign {
+  id          String     @id // Matches the blockchain campaign ID
+  name        String
+  description String     @db.Text
+  imageUrl    String
+  goalAmount  String     // Using String for large numbers
+  creator     String     // Wallet address of creator
+  deadline    DateTime
+  category    String
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  
+  // Analytics fields
+  currentAmount String    @default("0")
+  backerCount   Int       @default(0)
+  
+  // Relations
+  donations     Donation[]
+
+  @@map("campaigns")
+}
+
+// Donation model - stores donation history
+model Donation {
+  id            String   @id @default(uuid())
+  campaignId    String
+  donorAddress  String   // Wallet address of donor
+  amount        String   // Using String for large numbers
+  currency      String   // "SUI" or "sgUSD"
+  message       String?  @db.Text
+  isAnonymous   Boolean  @default(false)
+  transactionId String   // Blockchain transaction ID
+  createdAt     DateTime @default(now())
+  
+  // Relations
+  campaign      Campaign @relation(fields: [campaignId], references: [id])
+  donor         User?    @relation(fields: [donorAddress], references: [address])
+
+  @@index([campaignId])
+  @@index([donorAddress])
+  @@map("donations")
+}
+
+// User model - stores user donation statistics
+model User {
+  address       String     @id // Wallet address
+  totalDonated  String     @default("0") // Using String for large numbers
+  donationCount Int        @default(0)
+  firstDonation DateTime?
+  lastDonation  DateTime?
+  displayName   String?
+  profileImage  String?
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  
+  // Relations
+  donations     Donation[]
+
+  @@map("users")
+}

@@ -100,6 +100,60 @@ export async function createCampaign(
     // Sign and execute the transaction using our dapp-kit adapter
     const result = await executeDappKitTransaction(wallet, tx, client);
     
+    // Extract campaign ID from the transaction result
+    let campaignId = null;
+    try {
+      // Look for the created campaign object in the transaction effects
+      if (result.effects?.created) {
+        // Find the created object that has the Campaign type
+        const campaignObj = result.effects.created.find((obj: any) => 
+          obj.owner?.AddressOwner === wallet.address && 
+          obj.type?.includes('::crowdfunding::Campaign')
+        );
+        
+        if (campaignObj) {
+          campaignId = campaignObj.reference.objectId;
+          
+          // Save campaign to database
+          try {
+            // Import dynamically to avoid circular dependencies
+            const { saveCampaign } = await import('./db');
+            
+            // Get the creator address from the wallet
+            const creatorAddress = wallet.address || wallet.currentAccount?.address;
+            
+            if (creatorAddress) {
+              // Convert Unix timestamp to ISO date string
+              const deadlineDate = new Date(deadline * 1000).toISOString();
+              const createdAt = new Date().toISOString();
+              
+              // Save campaign to database
+              await saveCampaign({
+                id: campaignId,
+                name,
+                description,
+                imageUrl,
+                goalAmount: goalAmount.toString(),
+                creator: creatorAddress,
+                deadline: deadlineDate,
+                category,
+                createdAt,
+              });
+              
+              console.log('Campaign saved to database');
+            }
+          } catch (dbError) {
+            // Log database error but don't fail the transaction
+            console.error('Error saving campaign to database:', dbError);
+            // The blockchain transaction was still successful
+          }
+        }
+      }
+    } catch (parseError) {
+      console.error('Error parsing campaign ID from result:', parseError);
+      // Don't throw here, we still want to return the transaction result
+    }
+    
     return result;
   } catch (error) {
     console.error("Error creating campaign:", error);
@@ -146,6 +200,37 @@ export async function donate(
     // Sign and execute the transaction using our dapp-kit adapter
     const result = await executeDappKitTransaction(wallet, tx, client);
     
+    // Save donation to database for history tracking
+    try {
+      // Import dynamically to avoid circular dependencies
+      const { saveDonation } = await import('./db');
+      
+      // Get the donor address from the wallet
+      const donorAddress = wallet.address || wallet.currentAccount?.address;
+      
+      if (donorAddress && result.effects?.status?.status === 'success') {
+        // Extract transaction ID
+        const transactionId = result.digest;
+        
+        // Save donation to database
+        await saveDonation({
+          campaignId,
+          donorAddress,
+          amount: amount.toString(),
+          currency: 'SUI',
+          message,
+          isAnonymous,
+          transactionId,
+        });
+        
+        console.log('Donation saved to database');
+      }
+    } catch (dbError) {
+      // Log database error but don't fail the transaction
+      console.error('Error saving donation to database:', dbError);
+      // The blockchain transaction was still successful
+    }
+    
     return result;
   } catch (error) {
     console.error("Error donating to campaign:", error);
@@ -189,6 +274,37 @@ export async function donateSgUSD(
     
     // Sign and execute the transaction using our dapp-kit adapter
     const result = await executeDappKitTransaction(wallet, tx, client);
+    
+    // Save donation to database for history tracking
+    try {
+      // Import dynamically to avoid circular dependencies
+      const { saveDonation } = await import('./db');
+      
+      // Get the donor address from the wallet
+      const donorAddress = wallet.address || wallet.currentAccount?.address;
+      
+      if (donorAddress && result.effects?.status?.status === 'success') {
+        // Extract transaction ID
+        const transactionId = result.digest;
+        
+        // Save donation to database
+        await saveDonation({
+          campaignId,
+          donorAddress,
+          amount: amount.toString(),
+          currency: 'sgUSD',
+          message,
+          isAnonymous,
+          transactionId,
+        });
+        
+        console.log('sgUSD donation saved to database');
+      }
+    } catch (dbError) {
+      // Log database error but don't fail the transaction
+      console.error('Error saving sgUSD donation to database:', dbError);
+      // The blockchain transaction was still successful
+    }
     
     return result;
   } catch (error) {

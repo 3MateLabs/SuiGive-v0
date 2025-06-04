@@ -17,6 +17,8 @@ import { WalletConnectButton } from "@/components/WalletConnectButton"
 import DonateWithSgUSD from "@/components/DonateWithSgUSD"
 import { useCampaignProgress } from "@/hooks/useCampaignProgress"
 import CampaignCharts from "@/components/CampaignCharts"
+import CampaignDonations from "@/components/CampaignDonations"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 // We'll fetch real campaigns instead of using hardcoded ones
 
@@ -333,8 +335,15 @@ export default function DonatePage() {
                 <h1 className="text-2xl md:text-3xl font-bold mb-4 sui-navy-text">{campaign.name}</h1>
 
                 <p className="text-gray-700 mb-6">{campaign.description}</p>
-
-                <div className="mb-6">
+                
+                <Tabs defaultValue="progress" className="w-full mb-6">
+                  <TabsList className="mb-4">
+                    <TabsTrigger value="progress">Campaign Progress</TabsTrigger>
+                    <TabsTrigger value="donations">Donation History</TabsTrigger>
+                  </TabsList>
+                  
+                  <TabsContent value="progress">
+                    <div className="mb-6">
                   {/* Progress bar using useCampaignProgress hook - sgUSD only */}
                   <div className="flex justify-between text-sm mb-1">
                     <span className="font-medium">{progress}% Funded with sgUSD</span>
@@ -349,7 +358,7 @@ export default function DonatePage() {
                       disabled={progressLoading}
                     >
                       <RefreshCw className="h-3 w-3 mr-1" />
-                      Refresh Data
+                      Refresh
                     </button>
                   </div>
                   <div className="progress-bar">
@@ -363,6 +372,14 @@ export default function DonatePage() {
                     <span>Progress based on sgUSD donations only</span>
                   </div>
                 </div>
+                  </TabsContent>
+                  
+                  <TabsContent value="donations">
+                    <div className="mb-6">
+                      <CampaignDonations campaignId={campaign.id} />
+                    </div>
+                  </TabsContent>
+                </Tabs>
 
                 <div className="flex items-center justify-between text-sm text-gray-600 pt-4 border-t">
                   <div>

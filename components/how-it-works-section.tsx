@@ -3,40 +3,64 @@ import Image from "next/image"
 
 export default function HowItWorksSection() {
   return (
-    <section className="w-full bg-white py-10 px-4">
-      <div className="max-w-6xl mx-auto">
-        <div className="text-center mb-12">
-          <h2 className="text-2xl md:text-3xl font-bold mb-2">How SuiGives Works</h2>
-          <div className="text-xs md:text-sm text-gray-500 font-light max-w-xl mx-auto">SuiGives makes it easy to create, fund and track projects with security and complete transparency on the Sui Blockchain</div>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-          {/* Step 1 */}
-          <div className="flex flex-col items-center text-center">
-            <Image src="/how-works-wallet.png" alt="Connect Wallet" width={80} height={80} className="mb-4 rounded-lg object-contain" />
-            <div className="text-lg font-semibold mb-1">Connect your Wallet</div>
-            <div className="text-xs md:text-sm text-gray-500 font-light">Securely connect your Sui wallet to receive funds and enable transparent transactions.</div>
+    <section className="w-full bg-white px-4 py-12">
+      <div className="max-w-6xl mx-auto text-center">
+        <h2 className="text-3xl md:text-4xl font-bold mb-4">How It Works</h2>
+        <p className="text-gray-600 mb-12 max-w-3xl mx-auto">
+          Our platform makes it easy to create, fund, and track projects with complete transparency and security on the Sui blockchain.
+        </p>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {/* Step 1: Connect Your Wallet */}
+          <div className="bg-white rounded-xl p-6 text-center shadow-sm border border-gray-100">
+            <div className="w-12 h-12 mx-auto mb-4 bg-blue-100 rounded-full flex items-center justify-center">
+              {/* Placeholder for Icon 1 */}
+              <Image src="/how-works-wallet.png" alt="Connect Wallet Icon" width={24} height={24} />
+            </div>
+            <h3 className="text-lg font-semibold mb-2">Connect Your Wallet</h3>
+            <p className="text-sm text-gray-600">
+              Link your Sui wallet to our platform to start contributing to projects or create
+              your own fundraising campaign.
+            </p>
           </div>
-          {/* Step 2 */}
-          <div className="flex flex-col items-center text-center">
-            <Image src="/how-works-timeline.png" alt="Create Project" width={80} height={80} className="mb-4 rounded-lg object-contain" />
-            <div className="text-lg font-semibold mb-1">Create your project</div>
-            <div className="text-xs md:text-sm text-gray-500 font-light">Set your funding goal, add details, and launch your project with ease.</div>
+
+          {/* Step 2: Create or Support */}
+          <div className="bg-white rounded-xl p-6 text-center shadow-sm border border-gray-100">
+            <div className="w-12 h-12 mx-auto mb-4 bg-blue-100 rounded-full flex items-center justify-center">
+               {/* Placeholder for Icon 2 */}
+               <Image src="/how-works-timeline.png" alt="Create Project Icon" width={24} height={24} />
+            </div>
+            <h3 className="text-lg font-semibold mb-2">Create or Support</h3>
+            <p className="text-sm text-gray-600">
+              Launch your own project with detailed information or browse existing
+              campaigns to support causes you care about.
+            </p>
           </div>
-          {/* Step 3 */}
-          <div className="flex flex-col items-center text-center">
-            <Image src="/how-works-share.png" alt="Share Campaign" width={80} height={80} className="mb-4 rounded-lg object-contain" />
-            <div className="text-lg font-semibold mb-1">Share your campaign</div>
-            <div className="text-xs md:text-sm text-gray-500 font-light">Promote your project to the Sui community and beyond for maximum reach.</div>
+
+          {/* Step 3: Community Engagement */}
+          <div className="bg-white rounded-xl p-6 text-center shadow-sm border border-gray-100">
+            <div className="w-12 h-12 mx-auto mb-4 bg-blue-100 rounded-full flex items-center justify-center">
+               {/* Placeholder for Icon 3 */}
+               <Image src="/how-works-share.png" alt="Share Campaign Icon" width={24} height={24} />
+            </div>
+            <h3 className="text-lg font-semibold mb-2">Community Engagement</h3>
+            <p className="text-sm text-gray-600">
+              Engage with the community, share updates, and build a network of
+              supporters passionate about your cause.
+            </p>
           </div>
-          {/* Step 4 */}
-          <div className="flex flex-col items-center text-center">
-            <Image src="/how-works-funds.png" alt="Receive Funds" width={80} height={80} className="mb-4 rounded-lg object-contain" />
-            <div className="text-lg font-semibold mb-1">Receive & manage funds</div>
-            <div className="text-xs md:text-sm text-gray-500 font-light">Track your progress and receive funds directly to your wallet securely.</div>
+
+          {/* Step 4: Transparent Tracking */}
+          <div className="bg-white rounded-xl p-6 text-center shadow-sm border border-gray-100">
+            <div className="w-12 h-12 mx-auto mb-4 bg-blue-100 rounded-full flex items-center justify-center">
+               {/* Placeholder for Icon 4 */}
+               <Image src="/how-works-funds.png" alt="Receive Funds Icon" width={24} height={24} />
+            </div>
+            <h3 className="text-lg font-semibold mb-2">Transparent Tracking</h3>
+            <p className="text-sm text-gray-600">
+              Track the progress of your contributions or project funding with
+              complete transparency on the Sui blockchain.
+            </p>
           </div>
-        </div>
-        <div className="flex justify-center mt-10">
-          <a href="/how-it-works" className="px-6 py-2 rounded-full bg-[#0a2233] text-white font-semibold text-sm hover:bg-[#18344a] transition">Learn more</a>
         </div>
       </div>
     </section>

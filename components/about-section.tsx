@@ -6,7 +6,7 @@ import AnimationWrapper from "./animation-wrapper"
 
 export default function AboutSection() {
   return (
-    <section id="about" className="flex px-4 sm:px-6 lg:px-8 sui-blue-bg py-10">
+    <section id="about" className="flex px-4 sm:px-6 lg:px-8 sui-blue-bg py-12">
       <div className="max-w-[90%] mx-auto">
         <div className="grid lg:grid-cols-2 gap-12 items-center">
           <AnimationWrapper id="about">

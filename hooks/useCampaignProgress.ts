@@ -282,7 +282,11 @@ export function useCampaignProgress(campaignId: string) {
     try {
       if (!amount) return '0.00';
       const amountBigInt = BigInt(amount);
-      return (Number(amountBigInt) / 1_000_000_000).toFixed(2);
+      const num = Number(amountBigInt) / 1_000_000_000;
+      const fixedNum = num.toFixed(2);
+      const [integerPart, decimalPart] = fixedNum.split('.');
+      const formattedIntegerPart = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+      return decimalPart ? `${formattedIntegerPart}.${decimalPart}` : formattedIntegerPart;
     } catch (error) {
       console.error('Error formatting amount:', error);
       return '0.00';

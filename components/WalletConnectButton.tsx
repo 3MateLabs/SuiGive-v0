@@ -31,7 +31,7 @@ function CustomConnectButton(props: React.ComponentProps<typeof ConnectButton>) 
           border-radius: 9999px !important;
           background: linear-gradient(to right, #f0f9ff, #e0f2fe) !important;
           border: 1px solid #bae6fd !important;
-          padding: 0.375rem 0.75rem !important;
+          padding: 0.75rem 1.5rem !important;
           transition: all 0.2s ease-in-out !important;
           color: #0c4a6e !important;
           font-weight: 500 !important;

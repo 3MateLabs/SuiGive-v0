@@ -3,7 +3,7 @@ import Image from "next/image"
 
 export default function HowItWorksSection() {
   return (
-    <section className="w-full bg-white py-16 px-4">
+    <section className="w-full bg-white py-10 px-4">
       <div className="max-w-6xl mx-auto">
         <div className="text-center mb-12">
           <h2 className="text-2xl md:text-3xl font-bold mb-2">How SuiGives Works</h2>

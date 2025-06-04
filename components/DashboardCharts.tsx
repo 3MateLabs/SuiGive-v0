@@ -16,6 +16,7 @@ import {
 import { Doughnut, Bar } from 'react-chartjs-2';
 import { Campaign } from '@/lib/sui-campaigns';
 import { motion } from 'framer-motion';
+import SgUSDBalanceDisplay from "./SgUSDBalanceDisplay"
 
 // Register the required Chart.js components
 ChartJS.register(
@@ -33,6 +34,14 @@ ChartJS.register(
 interface DashboardChartsProps {
   campaigns: Campaign[];
 }
+
+// Helper function to format numbers with commas and two decimal places
+const formatNumberWithCommas = (num: number): string => {
+  const fixedNum = num.toFixed(2);
+  const [integerPart, decimalPart] = fixedNum.split('.');
+  const formattedIntegerPart = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  return decimalPart ? `${formattedIntegerPart}.${decimalPart}` : formattedIntegerPart;
+};
 
 export default function DashboardCharts({ campaigns }: DashboardChartsProps) {
   // Calculate aggregate statistics
@@ -255,7 +264,7 @@ export default function DashboardCharts({ campaigns }: DashboardChartsProps) {
         >
           <h3 className="text-sm font-medium mb-1 text-gray-500">Total Raised</h3>
           <p className="text-3xl font-semibold text-gray-800">
-            {stats.totalRaisedSgUSD.toFixed(2)} <span className="text-sm text-gray-500">sgUSD</span>
+            {formatNumberWithCommas(stats.totalRaisedSgUSD)} <span className="text-sm text-gray-500">sgUSD</span>
           </p>
         </motion.div>
         <motion.div 
@@ -284,7 +293,7 @@ export default function DashboardCharts({ campaigns }: DashboardChartsProps) {
             <div className="flex justify-center gap-6 text-xs text-gray-500">
               <div className="flex items-center gap-1">
                 <div className="w-3 h-3 rounded-full bg-[rgba(16,185,129,0.85)]"></div>
-                <span>sgUSD Raised: {stats.totalRaisedSgUSD.toFixed(2)}</span>
+                <span>sgUSD Raised: {formatNumberWithCommas(stats.totalRaisedSgUSD)}</span>
               </div>
               <div className="flex items-center gap-1">
                 <div className="w-3 h-3 rounded-full bg-[rgba(229,231,235,0.6)]"></div>

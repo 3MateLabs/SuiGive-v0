@@ -25,6 +25,14 @@ ChartJS.register(
   Title
 );
 
+// Helper function to format numbers with commas and two decimal places
+const formatNumberWithCommas = (num: number): string => {
+  const fixedNum = num.toFixed(2);
+  const [integerPart, decimalPart] = fixedNum.split('.');
+  const formattedIntegerPart = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  return decimalPart ? `${formattedIntegerPart}.${decimalPart}` : formattedIntegerPart;
+};
+
 interface CampaignChartsProps {
   name: string;
   goalAmount: string;
@@ -242,7 +250,7 @@ export default function CampaignCharts({
       <div className="grid grid-cols-2 gap-4 mb-6">
         <div className="bg-white p-4 rounded-lg text-center border border-gray-100">
           <h3 className="text-sm font-medium mb-1 text-gray-500">Total Raised</h3>
-          <p className="text-2xl font-semibold text-gray-800">{raisedSgUSDValue.toFixed(2)} <span className="text-sm text-gray-500">sgUSD</span></p>
+          <p className="text-2xl font-semibold text-gray-800">{formatNumberWithCommas(raisedSgUSDValue)} <span className="text-sm text-gray-500">sgUSD</span></p>
         </div>
         <div className="bg-white p-4 rounded-lg text-center border border-gray-100">
           <h3 className="text-sm font-medium mb-1 text-gray-500">Backers</h3>
@@ -265,7 +273,7 @@ export default function CampaignCharts({
             <p>Progress: <span className="font-medium">{percentageComplete}%</span> of goal</p>
             <div className="flex justify-center items-center gap-1 mt-2">
               <div className="w-3 h-3 rounded-full bg-[rgba(16,185,129,0.85)]"></div>
-              <span>sgUSD: {raisedSgUSDValue.toFixed(2)}</span>
+              <span>sgUSD: {formatNumberWithCommas(raisedSgUSDValue)}</span>
             </div>
           </div>
         </motion.div>
@@ -281,7 +289,7 @@ export default function CampaignCharts({
             <p className="text-gray-500">
               {percentageComplete >= 100 
                 ? "Goal reached! 🎉" 
-                : `Need ${remainingToGoal.toFixed(2)} more to reach goal`}
+                : `Need ${formatNumberWithCommas(remainingToGoal)} more to reach goal`}
             </p>
           </div>
         </motion.div>

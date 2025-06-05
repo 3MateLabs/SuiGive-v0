@@ -27,9 +27,17 @@ model Campaign {
   // Analytics fields
   currentAmount String    @default("0")
   backerCount   Int       @default(0)
+  viewCount     Int       @default(0)
+  shareCount    Int       @default(0)
+  
+  // Additional metadata
+  tags         String[]  @default([]) 
+  websiteUrl   String?
+  socialLinks  Json?     // Store social links as JSON
   
   // Relations
-  donations     Donation[]
+  donations    Donation[]
+  createdBy    User?      @relation("CreatedBy", fields: [creator], references: [address])
 
   @@map("campaigns")
 }
@@ -55,15 +63,35 @@ model Donation {
   @@map("donations")
 }
 
-// User model - stores user donation statistics
+// User model - stores user profile and donation statistics
 model User {
   address       String     @id // Wallet address
   totalDonated  String     @default("0") // Using String for large numbers
   donationCount Int        @default(0)
   firstDonation DateTime?
   lastDonation  DateTime?
+  
+  // Profile information
   displayName   String?
   profileImage  String?
+  bio           String?    @db.Text
+  email         String?    @unique
+  website       String?
+  twitter       String?
+  discord       String?
+  
+  // Privacy settings
+  isPrivate     Boolean    @default(false) // If true, hide profile from public
+  showEmail     Boolean    @default(false)
+  showSocial    Boolean    @default(true)
+  
+  // Badges and achievements
+  badges        Json?      // Store badges as JSON array
+  
+  // Campaigns created by this user
+  createdCampaigns Campaign[] @relation("CreatedBy")
+  
+  // System fields
   createdAt     DateTime   @default(now())
   updatedAt     DateTime   @updatedAt
   

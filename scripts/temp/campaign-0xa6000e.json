@@ -1,0 +1,37 @@
+{
+  "objectId": "0xa6000e9c2bb48fd7158c18ac22311e38bab7fc0bb29c29346c6855c4d73958f2",
+  "version": "439094782",
+  "digest": "BHpXeqysajYiNWWZYLQ7AtGjBssmjXbs6CxDpcGD8D2h",
+  "type": "0x049c3080b5e17baf41f64b2fd8503f057bfe79cb1790e23ded612860ed91f187::crowdfunding::Campaign",
+  "owner": {
+    "Shared": {
+      "initial_shared_version": 418265864
+    }
+  },
+  "previousTransaction": "DdtJ69bHPwz6xM6oh8pj6BSw16pMdGdkESU26pDgG2N8",
+  "storageRebate": "3336400",
+  "content": {
+    "dataType": "moveObject",
+    "type": "0x049c3080b5e17baf41f64b2fd8503f057bfe79cb1790e23ded612860ed91f187::crowdfunding::Campaign",
+    "hasPublicTransfer": true,
+    "fields": {
+      "backer_count": "16",
+      "category": "Charity Campaign",
+      "creator": "0x9a5b0ad3a18964ab7c0dbf9ab4cdecfd6b3899423b47313ae6e78f4b801022a3",
+      "deadline": "1748475000",
+      "description": "Ruru is smart and he wants to go to college.",
+      "distributed_amount": "0",
+      "goal_amount": "2000000000",
+      "id": {
+        "id": "0xa6000e9c2bb48fd7158c18ac22311e38bab7fc0bb29c29346c6855c4d73958f2"
+      },
+      "image_url": "https://pbs.twimg.com/profile_images/1905766835519418368/ppyyNHS9_400x400.jpg",
+      "is_active": true,
+      "name": "Help Ruru go to college.",
+      "raised": "1200001000",
+      "raised_sgusd": "2092000000000",
+      "withdrawn_amount": "0",
+      "withdrawn_sgusd": "0"
+    }
+  }
+}

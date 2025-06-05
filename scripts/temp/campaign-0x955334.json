@@ -1,0 +1,37 @@
+{
+  "objectId": "0x95533453cad7c11bbb9e21a40040486129653e356eee38087a2c0012a16835de",
+  "version": "439094764",
+  "digest": "7iXg12S3AvyonAzV1GH8Ec2KnWLYCUpWae5Ka7zFVsNt",
+  "type": "0x049c3080b5e17baf41f64b2fd8503f057bfe79cb1790e23ded612860ed91f187::crowdfunding::Campaign",
+  "owner": {
+    "Shared": {
+      "initial_shared_version": 418265869
+    }
+  },
+  "previousTransaction": "5pHdS4DLJjswtxSDJ2gZtC2GWH9jtqTji571ETcKPJiz",
+  "storageRebate": "3085600",
+  "content": {
+    "dataType": "moveObject",
+    "type": "0x049c3080b5e17baf41f64b2fd8503f057bfe79cb1790e23ded612860ed91f187::crowdfunding::Campaign",
+    "hasPublicTransfer": true,
+    "fields": {
+      "backer_count": "1",
+      "category": "Community Project",
+      "creator": "0x9a5b0ad3a18964ab7c0dbf9ab4cdecfd6b3899423b47313ae6e78f4b801022a3",
+      "deadline": "1749783397",
+      "description": "This is Sui Overflow",
+      "distributed_amount": "0",
+      "goal_amount": "10000000000",
+      "id": {
+        "id": "0x95533453cad7c11bbb9e21a40040486129653e356eee38087a2c0012a16835de"
+      },
+      "image_url": "https://blog.sui.io/content/images/size/w1200/2025/02/Overflow-2025-reg.png",
+      "is_active": true,
+      "name": "New Sui Overflow",
+      "raised": "0",
+      "raised_sgusd": "10000000000",
+      "withdrawn_amount": "0",
+      "withdrawn_sgusd": "0"
+    }
+  }
+}

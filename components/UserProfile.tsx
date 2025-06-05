@@ -25,7 +25,7 @@ export const UserProfile: React.FC<UserProfileProps> = ({
   showCampaigns = true,
   compact = false
 }) => {
-  const { profile, isLoading, error, updateProfile, isConnected, walletAddress } = useUserProfile();
+  const { profile, isLoading, error, updateProfile, fetchProfile, isConnected, walletAddress } = useUserProfile();
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState<ProfileUpdateData>({
     displayName: '',
@@ -67,12 +67,20 @@ export const UserProfile: React.FC<UserProfileProps> = ({
     setIsEditing(true);
   };
 
-  // Save profile changes
-  const handleSave = async (e: React.FormEvent) => {
+  // Handle form submission
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const success = await updateProfile(formData);
+    
     if (success) {
       setIsEditing(false);
+    }
+  };
+  
+  // Retry profile fetch if there was an error
+  const handleRetryFetch = async () => {
+    if (walletAddress) {
+      await fetchProfile(walletAddress);
     }
   };
 
@@ -105,11 +113,21 @@ export const UserProfile: React.FC<UserProfileProps> = ({
     );
   }
 
-  if (error && !profile) {
+  if (error) {
     return (
       <div className="p-6 bg-white rounded-lg shadow-md">
         <h2 className="text-2xl font-bold mb-4">Error Loading Profile</h2>
-        <p className="text-red-500">{error}</p>
+        <p className="text-red-500 mb-4">Failed to fetch user profile</p>
+        
+        {isConnected && (
+          <button 
+            onClick={handleRetryFetch}
+            className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/80 mr-2"
+          >
+            Retry
+          </button>
+        )}
+        
         <div className="mt-4">
           <ConnectButton />
         </div>
@@ -122,7 +140,7 @@ export const UserProfile: React.FC<UserProfileProps> = ({
     return (
       <div className="p-6 bg-white rounded-lg shadow-md">
         <h2 className="text-2xl font-bold mb-4">Edit Profile</h2>
-        <form onSubmit={handleSave}>
+        <form onSubmit={handleSubmit}>
           <div className="mb-4">
             <label className="block text-sm font-medium mb-1">Display Name</label>
             <input

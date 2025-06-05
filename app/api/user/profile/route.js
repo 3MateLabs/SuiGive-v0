@@ -7,15 +7,13 @@
 
 import { NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
-import path from 'path';
 
-// Import the donation importer functions
-let updateUserStats;
-try {
-  const donationImporter = require(path.join(process.cwd(), 'scripts/donation-importer.js'));
-  updateUserStats = donationImporter.updateUserStats;
-} catch (error) {
-  console.error('Error importing donation-importer:', error);
+// Direct import of the donation importer module
+import { updateUserStats } from '../../../../scripts/donation-importer.js';
+
+// Fallback in case direct import fails
+if (!updateUserStats) {
+  console.warn('updateUserStats function not available, profile badges may not be calculated correctly');
 }
 
 const prisma = new PrismaClient();
@@ -34,7 +32,7 @@ export async function GET(request) {
     }
     
     // Find user by wallet address
-    const user = await prisma.user.findUnique({
+    let user = await prisma.user.findUnique({
       where: { address },
       include: {
         // Include donation count but not actual donations for privacy
@@ -56,8 +54,42 @@ export async function GET(request) {
       }
     });
     
+    // If user doesn't exist, create a basic profile
     if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+      try {
+        // Create a new user with default values
+        user = await prisma.user.create({
+          data: {
+            address,
+            displayName: `User-${address.slice(0, 6)}`,
+            totalDonated: '0',
+            badges: JSON.stringify([]),
+            isPrivate: false,
+            showEmail: false,
+            showSocial: true
+          },
+          include: {
+            _count: {
+              select: { donations: true }
+            },
+            createdCampaigns: {
+              select: {
+                id: true,
+                name: true,
+                imageUrl: true,
+                currentAmount: true,
+                goalAmount: true,
+                backerCount: true,
+                category: true
+              }
+            }
+          }
+        });
+        console.log(`Created new user profile for ${address}`);
+      } catch (createError) {
+        console.error('Error creating user profile:', createError);
+        return NextResponse.json({ error: 'Failed to create user profile' }, { status: 500 });
+      }
     }
     
     // If user profile is private, return limited data

@@ -5,7 +5,7 @@
  * into the database and updating related statistics.
  */
 
-const { PrismaClient } = require('@prisma/client');
+import { PrismaClient } from '@prisma/client';
 
 // Create a Prisma client instance
 const prisma = new PrismaClient();
@@ -197,8 +197,8 @@ async function updateUserStats(userAddress, profileData = {}) {
   }
 }
 
-// Export functions for use in TypeScript and JavaScript modules
-module.exports = {
+// Export functions for use in ES modules
+export {
   importDonation,
   updateCampaignStats,
   updateUserStats

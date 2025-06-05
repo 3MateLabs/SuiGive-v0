@@ -1,0 +1,37 @@
+{
+  "objectId": "0x7074d2fe09c128fbec70552be32ad9ea0ce0d25fc7d5fd7852460dfa8867bbe3",
+  "version": "441582225",
+  "digest": "8p8MUcVHSBzmEpJMrhfhtW7qBsVgQLMMVtcRDShpuboM",
+  "type": "0x049c3080b5e17baf41f64b2fd8503f057bfe79cb1790e23ded612860ed91f187::crowdfunding::Campaign",
+  "owner": {
+    "Shared": {
+      "initial_shared_version": 418265863
+    }
+  },
+  "previousTransaction": "A6JsYJqBcbbF5BvqJ8Vq6sv6v1UwgfJmGyJnq82PeZ7e",
+  "storageRebate": "3055200",
+  "content": {
+    "dataType": "moveObject",
+    "type": "0x049c3080b5e17baf41f64b2fd8503f057bfe79cb1790e23ded612860ed91f187::crowdfunding::Campaign",
+    "hasPublicTransfer": true,
+    "fields": {
+      "backer_count": "6",
+      "category": "Charity Campaign",
+      "creator": "0x9a5b0ad3a18964ab7c0dbf9ab4cdecfd6b3899423b47313ae6e78f4b801022a3",
+      "deadline": "1748387907",
+      "description": "Help us check on Eason Chen",
+      "distributed_amount": "0",
+      "goal_amount": "20000000000",
+      "id": {
+        "id": "0x7074d2fe09c128fbec70552be32ad9ea0ce0d25fc7d5fd7852460dfa8867bbe3"
+      },
+      "image_url": "https://pbs.twimg.com/media/Gp4bgr9XYAA1MTl?format=jpg&name=large",
+      "is_active": true,
+      "name": "Is Eason Online?",
+      "raised": "0",
+      "raised_sgusd": "60000000000",
+      "withdrawn_amount": "0",
+      "withdrawn_sgusd": "0"
+    }
+  }
+}

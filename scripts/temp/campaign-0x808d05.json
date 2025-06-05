@@ -1,0 +1,37 @@
+{
+  "objectId": "0x808d05b222a2fae3e564f862bdb5e7b34acf3e783c63b5e3df7f864b1d91d653",
+  "version": "446901673",
+  "digest": "J9rJKhfyf66wMH46dA9tuaFe9rDuSK32jdGMknt5RyuX",
+  "type": "0x049c3080b5e17baf41f64b2fd8503f057bfe79cb1790e23ded612860ed91f187::crowdfunding::Campaign",
+  "owner": {
+    "Shared": {
+      "initial_shared_version": 439094783
+    }
+  },
+  "previousTransaction": "6gResmVjEmpEL4zA6BEzJG7XhR2FjtySA8EPdaWvWgUj",
+  "storageRebate": "2918400",
+  "content": {
+    "dataType": "moveObject",
+    "type": "0x049c3080b5e17baf41f64b2fd8503f057bfe79cb1790e23ded612860ed91f187::crowdfunding::Campaign",
+    "hasPublicTransfer": true,
+    "fields": {
+      "backer_count": "6",
+      "category": "Personal Fundraiser",
+      "creator": "0x9a5b0ad3a18964ab7c0dbf9ab4cdecfd6b3899423b47313ae6e78f4b801022a3",
+      "deadline": "1750070193",
+      "description": "Dbase",
+      "distributed_amount": "0",
+      "goal_amount": "9999999999",
+      "id": {
+        "id": "0x808d05b222a2fae3e564f862bdb5e7b34acf3e783c63b5e3df7f864b1d91d653"
+      },
+      "image_url": "https://pbs.twimg.com/profile_banners/1502309233592840197/1724053646/1500x500",
+      "is_active": true,
+      "name": "Dbase",
+      "raised": "0",
+      "raised_sgusd": "20000000000",
+      "withdrawn_amount": "0",
+      "withdrawn_sgusd": "0"
+    }
+  }
+}

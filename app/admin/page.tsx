@@ -9,22 +9,64 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 
+// Define TypeScript interfaces for our data models
+interface User {
+  id?: string;
+  address: string;
+  displayName?: string;
+  totalDonated?: string;
+  donationCount?: number;
+  profileImage?: string;
+  bio?: string;
+  email?: string;
+  website?: string;
+  twitter?: string;
+  discord?: string;
+  isPrivate?: boolean;
+  showEmail?: boolean;
+  showSocial?: boolean;
+}
+
+interface Donation {
+  id?: string;
+  campaignId: string;
+  donorAddress: string;
+  amount: string;
+  currency: string;
+  message?: string;
+  isAnonymous?: boolean;
+  transactionId: string;
+  createdAt?: Date | string;
+}
+
+interface Campaign {
+  id: string;
+  name: string;
+  description?: string;
+  imageUrl?: string;
+  currentAmount?: string;
+  goalAmount?: string;
+  backerCount?: number;
+  category?: string;
+  creatorAddress?: string;
+}
+
 export default function AdminPage() {
   // State for users
-  const [users, setUsers] = useState([]);
-  const [donations, setDonations] = useState([]);
-  const [campaigns, setCampaigns] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [users, setUsers] = useState<User[]>([]);
+  const [donations, setDonations] = useState<Donation[]>([]);
+  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
   
   // State for forms
-  const [newUser, setNewUser] = useState({
+  const [newUser, setNewUser] = useState<User>({
     address: '',
     displayName: '',
     totalDonated: '1000000000', // 1 SUI in MIST
     donationCount: 1
   });
   
-  const [newDonation, setNewDonation] = useState({
+  const [newDonation, setNewDonation] = useState<Donation>({
     campaignId: '',
     donorAddress: '',
     amount: '1000000000', // 1 SUI in MIST
@@ -64,7 +106,7 @@ export default function AdminPage() {
   }, []);
   
   // Handle form submissions
-  const handleAddUser = async (e) => {
+  const handleAddUser = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       const response = await fetch('/api/admin/users', {
@@ -99,7 +141,7 @@ export default function AdminPage() {
     }
   };
   
-  const handleAddDonation = async (e) => {
+  const handleUpdateDonation = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       const response = await fetch('/api/admin/donations', {
@@ -122,20 +164,24 @@ export default function AdminPage() {
           transactionId: `test-${Date.now()}`
         });
         
-        alert('Donation added successfully!');
+        alert('Donation updated successfully!');
       } else {
-        alert('Failed to add donation');
+        alert('Failed to update donation');
       }
     } catch (error) {
-      console.error('Error adding donation:', error);
-      alert('Error adding donation');
+      console.error('Error updating donation:', error);
+      alert('Error updating donation');
     }
   };
   
   // Format amount for display
-  const formatAmount = (amount) => {
-    const numAmount = parseFloat(amount) / 1_000_000_000; // Convert from MIST to SUI
-    return `${numAmount.toLocaleString(undefined, { maximumFractionDigits: 2 })} SUI`;
+  const formatAmount = (amount: string) => {
+    try {
+      const numAmount = parseFloat(amount) / 1_000_000_000; // Convert from MIST to SUI
+      return `${numAmount.toLocaleString(undefined, { maximumFractionDigits: 2 })} SUI`;
+    } catch (error) {
+      return 'Invalid amount';
+    }
   };
 
   return (
@@ -162,11 +208,13 @@ export default function AdminPage() {
                 ) : users.length > 0 ? (
                   <div className="space-y-4">
                     {users.map((user) => (
-                      <div key={user.address} className="border rounded-lg p-3">
-                        <p><strong>Address:</strong> {user.address}</p>
-                        <p><strong>Name:</strong> {user.displayName || 'N/A'}</p>
-                        <p><strong>Total Donated:</strong> {formatAmount(user.totalDonated)}</p>
-                        <p><strong>Donations:</strong> {user.donationCount}</p>
+                      <div key={user.address} className="p-4 border rounded-lg mb-2 flex justify-between items-center">
+                        <div>
+                          <p className="font-bold">{user.address ? `${user.address.slice(0, 8)}...${user.address.slice(-6)}` : 'Unknown'}</p>
+                          <p>Name: {user.displayName || 'Anonymous'}</p>
+                          <p>Total Donated: {formatAmount(user.totalDonated || '0')} SUI</p>
+                          <p>Donations: {user.donationCount || 0}</p>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -188,12 +236,13 @@ export default function AdminPage() {
                 ) : donations.length > 0 ? (
                   <div className="space-y-4">
                     {donations.map((donation) => (
-                      <div key={donation.id} className="border rounded-lg p-3">
-                        <p><strong>Campaign:</strong> {donation.campaignId}</p>
-                        <p><strong>Donor:</strong> {donation.donorAddress}</p>
-                        <p><strong>Amount:</strong> {formatAmount(donation.amount)}</p>
-                        <p><strong>Date:</strong> {new Date(donation.createdAt).toLocaleString()}</p>
-                        {donation.message && <p><strong>Message:</strong> {donation.message}</p>}
+                      <div key={donation.id || donation.transactionId} className="p-4 border rounded-lg mb-2">
+                        <p className="font-bold">ID: {donation.id || donation.transactionId}</p>
+                        <p>Campaign: {donation.campaignId}</p>
+                        <p>Donor: {donation.donorAddress ? `${donation.donorAddress.slice(0, 8)}...${donation.donorAddress.slice(-6)}` : 'Unknown'}</p>
+                        <p>Amount: {formatAmount(donation.amount)} {donation.currency}</p>
+                        <p>Date: {donation.createdAt ? new Date(donation.createdAt).toLocaleString() : 'Unknown'}</p>
+                        <p>Message: {donation.message || 'No message'}</p>
                       </div>
                     ))}
                   </div>
@@ -274,7 +323,7 @@ export default function AdminPage() {
                 <CardDescription>Create a test donation in the database</CardDescription>
               </CardHeader>
               <CardContent>
-                <form onSubmit={handleAddDonation} className="space-y-4">
+                <form onSubmit={handleUpdateDonation} className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="campaignId">Campaign ID</Label>
                     <Input 
@@ -321,15 +370,16 @@ export default function AdminPage() {
                     />
                   </div>
                   
-                  <div className="flex items-center space-x-2">
-                    <Checkbox 
-                      id="isAnonymous" 
-                      checked={newDonation.isAnonymous}
-                      onCheckedChange={(checked) => 
-                        setNewDonation({...newDonation, isAnonymous: checked})
-                      }
-                    />
-                    <Label htmlFor="isAnonymous">Anonymous Donation</Label>
+                  <div className="mb-4">
+                    <Label htmlFor="isAnonymous">Anonymous</Label>
+                    <div className="flex items-center space-x-2 mt-2">
+                      <Checkbox 
+                        id="isAnonymous" 
+                        checked={newDonation.isAnonymous || false} 
+                        onCheckedChange={(checked) => setNewDonation({...newDonation, isAnonymous: checked === true})} 
+                      />
+                      <Label htmlFor="isAnonymous">Hide donor identity</Label>
+                    </div>
                   </div>
                   
                   <Button type="submit" className="w-full">Add Donation</Button>

@@ -1,0 +1,37 @@
+{
+  "objectId": "0x3268c4a218032721c35258701a3445cfc6c863d0ed5fd283c7eb450a1c9ea07e",
+  "version": "441582223",
+  "digest": "DkgKnCjWmA91V4uH91591pj1f31W5CqSZnuPzLYHWUCE",
+  "type": "0x049c3080b5e17baf41f64b2fd8503f057bfe79cb1790e23ded612860ed91f187::crowdfunding::Campaign",
+  "owner": {
+    "Shared": {
+      "initial_shared_version": 418265862
+    }
+  },
+  "previousTransaction": "FoFx9MedA2cBhp7TzQHL9fSaAwrzdykTqWcZK8SbX6De",
+  "storageRebate": "3283200",
+  "content": {
+    "dataType": "moveObject",
+    "type": "0x049c3080b5e17baf41f64b2fd8503f057bfe79cb1790e23ded612860ed91f187::crowdfunding::Campaign",
+    "hasPublicTransfer": true,
+    "fields": {
+      "backer_count": "4",
+      "category": "Personal Fundraiser",
+      "creator": "0x9a5b0ad3a18964ab7c0dbf9ab4cdecfd6b3899423b47313ae6e78f4b801022a3",
+      "deadline": "1748473796",
+      "description": "We love Death (not literally)",
+      "distributed_amount": "0",
+      "goal_amount": "10000000000",
+      "id": {
+        "id": "0x3268c4a218032721c35258701a3445cfc6c863d0ed5fd283c7eb450a1c9ea07e"
+      },
+      "image_url": "https://pbs.twimg.com/profile_images/1924394047147331584/Zcrqflt0_400x400.jpg",
+      "is_active": true,
+      "name": "We love Death (not literally)",
+      "raised": "0",
+      "raised_sgusd": "40000000000",
+      "withdrawn_amount": "0",
+      "withdrawn_sgusd": "0"
+    }
+  }
+}

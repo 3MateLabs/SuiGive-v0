@@ -8,15 +8,27 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 # Frontend development
 npm run dev          # Start Next.js development server
 npm run build        # Build production bundle
+npm run start        # Start production server
 npm run lint         # Run ESLint
 
 # Package management
 npm install             # Install dependencies
 npm ci                  # Clean install
 
+# Database management (Prisma)
+npx prisma generate     # Generate Prisma client
+npx prisma db push      # Push schema changes to database
+npx prisma migrate dev  # Create and apply migrations
+npx prisma studio       # Open Prisma Studio GUI
+
 # Move contract development (in contracts/suigive/)
 sui move build       # Build Move contracts
 sui move test        # Run Move tests
+
+# Testing and debugging (Node.js scripts)
+node test-contract.js           # Test contract connectivity
+node test-frontend.js           # Test frontend configuration
+node scripts/test-db-connection.js  # Test database connection
 ```
 
 ## Architecture Overview
@@ -26,6 +38,8 @@ sui move test        # Run Move tests
 - **Styling**: Tailwind CSS with shadcn/ui components
 - **Blockchain**: Sui blockchain integration via @mysten/dapp-kit
 - **State**: React hooks with @tanstack/react-query for data fetching
+- **Database**: PostgreSQL with Prisma ORM
+- **Charts**: Chart.js and Recharts for data visualization
 
 ### Smart Contract Architecture
 The project uses a multi-token system built on Sui Move:
@@ -67,3 +81,17 @@ Multiple wallet compatibility layers:
 4. Results are cached using React Query
 
 When working with contracts, always reference `SUI_CONFIG` for deployed addresses and use the proxy API route for client-side blockchain calls.
+
+### Database Architecture
+The application uses PostgreSQL with Prisma ORM for off-chain data storage:
+- **Campaign**: Stores campaign metadata and analytics (linked to blockchain campaigns by ID)
+- **Donation**: Tracks donation history with blockchain transaction references
+- **User**: User profiles with donation statistics and privacy settings
+
+Database is synced with blockchain data through scripts in `scripts/` directory. Always use `prisma.campaign.upsert()` to sync blockchain data to avoid duplicates.
+
+### Environment Variables
+Required environment variables (see `.env`):
+- `DATABASE_URL`: PostgreSQL connection string
+- `DATABASE_DIRECT_URL`: Direct PostgreSQL connection (for Prisma migrations)
+- Additional Sui network configuration may be required for production

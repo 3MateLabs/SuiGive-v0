@@ -181,8 +181,11 @@ export async function saveDonation(donation: {
       });
 
       if (campaign) {
-        // Calculate new current amount
-        const newAmount = BigInt(campaign.currentAmount || '0') + BigInt(donation.amount);
+        // Only count sgUSD donations towards the campaign total
+        let newAmount = BigInt(campaign.currentAmount || '0');
+        if (donation.currency === 'sgUSD') {
+          newAmount = newAmount + BigInt(donation.amount);
+        }
         
         // Check if this donor has already donated to this campaign
         const previousDonations = await prismaClient.donation.findMany({
@@ -203,7 +206,7 @@ export async function saveDonation(donation: {
             backerCount: campaign.backerCount + backerCountIncrement,
           },
         });
-        console.log(`Updated campaign statistics: currentAmount=${newAmount.toString()}, backerCount=${campaign.backerCount + backerCountIncrement}`);
+        console.log(`Updated campaign statistics: currentAmount=${newAmount.toString()} (sgUSD only), backerCount=${campaign.backerCount + backerCountIncrement}`);
       }
 
       // 3. Update user statistics (if not anonymous)
@@ -215,7 +218,11 @@ export async function saveDonation(donation: {
         });
 
         if (user) {
-          const newTotal = BigInt(user.totalDonated || '0') + BigInt(donation.amount);
+          // Only count sgUSD donations towards user total
+          let newTotal = BigInt(user.totalDonated || '0');
+          if (donation.currency === 'sgUSD') {
+            newTotal = newTotal + BigInt(donation.amount);
+          }
           const now = new Date();
           
           await prismaClient.user.update({

@@ -50,13 +50,13 @@ export default function ExplorePage() {
     return 'bg-green-500';
   };
 
-  // Format SUI amount for display
+  // Format sgUSD amount for display
   const formatSuiAmount = (amount: string) => {
     if (!amount) return '0';
     try {
-      // Convert from MIST to SUI (1 SUI = 10^9 MIST)
-      const suiAmount = parseInt(amount, 10) / 1000000000;
-      return suiAmount.toLocaleString(undefined, { maximumFractionDigits: 2 });
+      // Convert from smallest unit to sgUSD (1 sgUSD = 10^9 smallest units)
+      const sgUsdAmount = parseInt(amount, 10) / 1000000000;
+      return sgUsdAmount.toLocaleString(undefined, { maximumFractionDigits: 2 });
     } catch (e) {
       return '0';
     }
@@ -217,8 +217,8 @@ export default function ExplorePage() {
                       {/* Progress bar with modern design */}
                       <div className="mb-4">
                         <div className="flex justify-between text-sm mb-1">
-                          <span className="font-medium text-gray-800">{formatSuiAmount(filteredCampaigns[0]?.currentAmount || '0')} SUI</span>
-                          <span className="text-gray-500">{formatSuiAmount(filteredCampaigns[0]?.goalAmount || '0')} SUI</span>
+                          <span className="font-medium text-gray-800">{formatSuiAmount(filteredCampaigns[0]?.currentAmount || '0')} sgUSD</span>
+                          <span className="text-gray-500">{formatSuiAmount(filteredCampaigns[0]?.goalAmount || '0')} sgUSD</span>
                         </div>
                         <div className="w-full h-2 rounded-full bg-gray-100">
                           {(() => {
@@ -290,8 +290,8 @@ export default function ExplorePage() {
                     {/* Progress bar with modern design */}
                     <div className="mb-3">
                       <div className="flex justify-between text-xs mb-1">
-                        <span className="font-medium text-gray-800">{formatSuiAmount(campaign?.currentAmount || '0')} SUI</span>
-                        <span className="text-gray-500">{formatSuiAmount(campaign?.goalAmount || '0')} SUI</span>
+                        <span className="font-medium text-gray-800">{formatSuiAmount(campaign?.currentAmount || '0')} sgUSD</span>
+                        <span className="text-gray-500">{formatSuiAmount(campaign?.goalAmount || '0')} sgUSD</span>
                       </div>
                       <div className="w-full h-1.5 rounded-full bg-gray-100">
                         {(() => {

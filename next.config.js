@@ -20,7 +20,9 @@ const nextConfig = {
       'explorer.sui.io',
       'fullnode.testnet.sui.io',
       'sui-testnet.nodeinfra.com',
-      'sui-testnet-rpc.allthatnode.com'
+      'sui-testnet-rpc.allthatnode.com',
+      'placehold.co',
+      'via.placeholder.com'
     ],
   },
 }

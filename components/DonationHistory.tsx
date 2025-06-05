@@ -68,7 +68,8 @@ export default function DonationHistory() {
 
   // Format currency amount for display
   const formatAmount = (amount: string, currency: string) => {
-    const numAmount = parseFloat(amount) / 1_000_000_000; // Convert from MIST to SUI
+    const numAmount = parseFloat(amount) / 1_000_000_000; // Convert from smallest unit
+    // Only show sgUSD donations in the total, but display individual donation currencies
     return `${numAmount.toLocaleString(undefined, { maximumFractionDigits: 2 })} ${currency}`;
   };
 
@@ -113,7 +114,7 @@ export default function DonationHistory() {
           {userStats ? (
             <>
               You've made {userStats.donationCount} donation{userStats.donationCount !== 1 ? 's' : ''} 
-              totaling {formatAmount(userStats.totalDonated, 'SUI')}
+              totaling {formatAmount(userStats.totalDonated, 'sgUSD')}
             </>
           ) : (
             "You haven't made any donations yet"

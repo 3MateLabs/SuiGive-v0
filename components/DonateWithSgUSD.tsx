@@ -228,6 +228,35 @@ export default function DonateWithSgUSD({
 
       toast.success("sgUSD donation successful!", { id: "donation" });
 
+      // Save the donation to database
+      try {
+        const saveResponse = await fetch('/api/donations', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            campaignId,
+            donorAddress: currentAccount.address,
+            amount: amountInUnits.toString(),
+            currency: 'sgUSD',
+            message: donationMessage,
+            isAnonymous,
+            transactionId: result.digest // Use the transaction digest as ID
+          })
+        });
+
+        if (!saveResponse.ok) {
+          console.error('Failed to save donation to database:', await saveResponse.text());
+          toast.error("Donation saved on blockchain but failed to update database", { duration: 5000 });
+        } else {
+          console.log("Donation saved to database successfully");
+        }
+      } catch (dbError) {
+        console.error('Error saving donation to database:', dbError);
+        toast.error("Donation saved on blockchain but failed to update database", { duration: 5000 });
+      }
+
       // Don't update DOM directly - instead rely on the callback to update state
       // This ensures the UI is consistent with the state and persists across refreshes
       console.log("Donation successful, amount:", parseFloat(sgUSDAmount));

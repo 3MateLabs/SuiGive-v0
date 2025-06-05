@@ -45,8 +45,8 @@ export default function TopDonors({ limit = 10 }: TopDonorsProps) {
 
   // Format currency amount for display
   const formatAmount = (amount: string) => {
-    const numAmount = parseFloat(amount) / 1_000_000_000; // Convert from MIST to SUI
-    return `${numAmount.toLocaleString(undefined, { maximumFractionDigits: 2 })} SUI`;
+    const numAmount = parseFloat(amount) / 1_000_000_000; // Convert from smallest unit to sgUSD
+    return `${numAmount.toLocaleString(undefined, { maximumFractionDigits: 2 })} sgUSD`;
   };
 
   // Get donor display name or shortened address

@@ -2,27 +2,27 @@
 // A decentralized crowdfunding platform built on Sui blockchain
 module suigive::crowdfunding {
     // Import required modules
-    use sui::object;
     use sui::coin;
     use sui::balance::{Self, Balance};
     use sui::sui::SUI;
-    use sui::transfer;
-    use sui::tx_context;
     use sui::event;
     use sui::table::{Self as table};
-    use std::vector;
-    use std::string::{Self, String};
+    use std::string::{String};
     // Use the new donation receipt module instead of donation_token
     use suigive::donation_receipt;
     use suigive::sg_sui_token::{Self, SgSuiTreasury, SgSuiMinterCap};
     // Import sgUSD token
-    use suigive::sg_usd::{Self, SG_USD};
+    use suigive::sg_usd::{SG_USD};
+    
+    // === Constants ===
+    const BENEFICIARY_ADDRESS: address = @0x4822bfc9c86d1a77daf48b0bdf8f012ae9b7f8f01b4195dc0f3fd4fb838525bd;
+    const BENEFICIARY_SUCCESS_RATE: u64 = 6; // 6% commission for successful campaigns
+    const BENEFICIARY_FAILURE_RATE: u64 = 3; // 3% commission for failed campaigns
+    const MAX_BENEFICIARY_COMMISSION: u64 = 10_000_000_000_000; // 10,000 SUI in MIST
     
     // === Errors ===
     const EFundingDeadlineInPast: u64 = 1;
     const EFundingGoalZero: u64 = 2;
-    const EFundingNotEnded: u64 = 3;
-    const EFundingGoalNotReached: u64 = 4;
     const ENotFundOwner: u64 = 5;
     const EFundingEnded: u64 = 6;
     const EInsufficientFunds: u64 = 7;
@@ -49,6 +49,8 @@ module suigive::crowdfunding {
         withdrawn_amount: u64,
         // Track total sgUSD withdrawn
         withdrawn_sgusd: u64,
+        // Track if beneficiary commission has been paid
+        beneficiary_paid: bool,
     }
 
     /// Capability given to the campaign creator to withdraw funds
@@ -102,6 +104,14 @@ module suigive::crowdfunding {
     /// Emitted when the registry is created
     public struct RegistryCreated has copy, drop {
         registry_id: object::ID,
+    }
+    
+    /// Emitted when beneficiary commission is paid
+    public struct BeneficiaryCommissionPaid has copy, drop {
+        campaign_id: object::ID,
+        amount: u64,
+        token_type: String,
+        is_successful_campaign: bool,
     }
 
     // === Module Initialization ===
@@ -173,6 +183,7 @@ module suigive::crowdfunding {
             distributed_amount: 0,
             withdrawn_amount: 0,
             withdrawn_sgusd: 0,
+            beneficiary_paid: false,
         };
 
         // Create and transfer the owner capability to the creator
@@ -324,18 +335,57 @@ module suigive::crowdfunding {
         let available = balance::value(&campaign.raised) - campaign.withdrawn_amount;
         assert!(available > 0, EInsufficientFunds);
         
+        let mut commission_amount = 0u64;
+        let mut owner_amount = available;
+        
+        // Calculate and pay beneficiary commission only once
+        if (!campaign.beneficiary_paid) {
+            let total_raised = balance::value(&campaign.raised) + balance::value(&campaign.raised_sgusd);
+            commission_amount = if (total_raised >= campaign.goal_amount) {
+                // Campaign successful - calculate 6% commission with max cap
+                calculate_success_commission(total_raised)
+            } else {
+                // Campaign failed - calculate 3% commission
+                calculate_failure_commission(total_raised)
+            };
+            
+            // Ensure we don't take more commission than available
+            if (commission_amount > available) {
+                commission_amount = available;
+            };
+            
+            owner_amount = available - commission_amount;
+            campaign.beneficiary_paid = true;
+        };
+        
         // Update withdrawn amount
         campaign.withdrawn_amount = campaign.withdrawn_amount + available;
         
-        // Transfer funds to campaign owner
-        let funds = coin::from_balance(balance::split(&mut campaign.raised, available), ctx);
-        transfer::public_transfer(funds, tx_context::sender(ctx));
+        // Transfer commission to beneficiary
+        if (commission_amount > 0) {
+            let commission_coin = coin::from_balance(balance::split(&mut campaign.raised, commission_amount), ctx);
+            transfer::public_transfer(commission_coin, BENEFICIARY_ADDRESS);
+            
+            // Emit beneficiary commission event
+            event::emit(BeneficiaryCommissionPaid {
+                campaign_id: object::id(campaign),
+                amount: commission_amount,
+                token_type: std::string::utf8(b"SUI"),
+                is_successful_campaign: balance::value(&campaign.raised) + balance::value(&campaign.raised_sgusd) >= campaign.goal_amount,
+            });
+        };
+        
+        // Transfer remaining funds to campaign owner
+        if (owner_amount > 0) {
+            let funds = coin::from_balance(balance::split(&mut campaign.raised, owner_amount), ctx);
+            transfer::public_transfer(funds, tx_context::sender(ctx));
+        };
         
         // Emit event
         event::emit(FundsWithdrawn {
             campaign_id: object::id(campaign),
             recipient: tx_context::sender(ctx),
-            amount: available
+            amount: owner_amount
         });
     }
     
@@ -352,18 +402,57 @@ module suigive::crowdfunding {
         let available = balance::value(&campaign.raised_sgusd) - campaign.withdrawn_sgusd;
         assert!(available > 0, EInsufficientFunds);
         
+        let mut commission_amount = 0u64;
+        let mut owner_amount = available;
+        
+        // Calculate and pay beneficiary commission only once
+        if (!campaign.beneficiary_paid) {
+            let total_raised = balance::value(&campaign.raised) + balance::value(&campaign.raised_sgusd);
+            commission_amount = if (total_raised >= campaign.goal_amount) {
+                // Campaign successful - calculate 6% commission with max cap
+                calculate_success_commission(total_raised)
+            } else {
+                // Campaign failed - calculate 3% commission
+                calculate_failure_commission(total_raised)
+            };
+            
+            // Ensure we don't take more commission than available
+            if (commission_amount > available) {
+                commission_amount = available;
+            };
+            
+            owner_amount = available - commission_amount;
+            campaign.beneficiary_paid = true;
+        };
+        
         // Update withdrawn amount
         campaign.withdrawn_sgusd = campaign.withdrawn_sgusd + available;
         
-        // Transfer funds to campaign owner
-        let funds = coin::from_balance(balance::split(&mut campaign.raised_sgusd, available), ctx);
-        transfer::public_transfer(funds, tx_context::sender(ctx));
+        // Transfer commission to beneficiary
+        if (commission_amount > 0) {
+            let commission_coin = coin::from_balance(balance::split(&mut campaign.raised_sgusd, commission_amount), ctx);
+            transfer::public_transfer(commission_coin, BENEFICIARY_ADDRESS);
+            
+            // Emit beneficiary commission event
+            event::emit(BeneficiaryCommissionPaid {
+                campaign_id: object::id(campaign),
+                amount: commission_amount,
+                token_type: std::string::utf8(b"sgUSD"),
+                is_successful_campaign: balance::value(&campaign.raised) + balance::value(&campaign.raised_sgusd) >= campaign.goal_amount,
+            });
+        };
+        
+        // Transfer remaining funds to campaign owner
+        if (owner_amount > 0) {
+            let funds = coin::from_balance(balance::split(&mut campaign.raised_sgusd, owner_amount), ctx);
+            transfer::public_transfer(funds, tx_context::sender(ctx));
+        };
         
         // Emit event
         event::emit(FundsWithdrawn {
             campaign_id: object::id(campaign),
             recipient: tx_context::sender(ctx),
-            amount: available
+            amount: owner_amount
         });
 
     }
@@ -555,5 +644,25 @@ module suigive::crowdfunding {
     /// Get the ID of a registry object - useful for finding the registry
     public fun get_registry_id(registry: &Registry): object::ID {
         object::id(registry)
+    }
+    
+    // === Beneficiary Commission Functions ===
+    
+    /// Calculate beneficiary commission for successful campaigns
+    /// Returns the commission amount to be paid to the beneficiary
+    fun calculate_success_commission(total_raised: u64): u64 {
+        let commission = (total_raised * BENEFICIARY_SUCCESS_RATE) / 100;
+        // Cap the commission at MAX_BENEFICIARY_COMMISSION
+        if (commission > MAX_BENEFICIARY_COMMISSION) {
+            MAX_BENEFICIARY_COMMISSION
+        } else {
+            commission
+        }
+    }
+    
+    /// Calculate beneficiary commission for failed campaigns
+    /// Returns the commission amount to be paid to the beneficiary
+    fun calculate_failure_commission(total_raised: u64): u64 {
+        (total_raised * BENEFICIARY_FAILURE_RATE) / 100
     }
 }

@@ -1,18 +1,11 @@
 module suigive::donation_receipt {
-    use sui::object::{Self, UID};
-    use sui::tx_context::{Self, TxContext};
-    use sui::transfer;
     use sui::event;
     use std::string::{Self, String};
     use sui::url::{Self, Url};
     use sui::package;
     use sui::display;
-    use std::ascii;
-    use std::vector;
     
     // === Errors ===
-    const ENotOwner: u64 = 1;
-    const ENotAdmin: u64 = 2;
     const ENotTransferable: u64 = 3;
     
     // === Structs ===

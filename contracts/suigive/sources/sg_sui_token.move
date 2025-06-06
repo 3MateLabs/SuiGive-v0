@@ -1,15 +1,11 @@
 // SuiGive Closed-Loop Token (sgSUI) Module
 // Implements a closed-loop token system for campaign fund distribution
 module suigive::sg_sui_token {
-    // These modules are already provided by default
-    use sui::object::{Self, UID};
+    // Import required modules
     use sui::coin::{Self, Coin, TreasuryCap};
     use sui::balance::{Self, Balance};
     use sui::sui::SUI;
-    use sui::transfer;
-    use sui::tx_context::{Self, TxContext};
     use sui::event;
-    use std::option;
     use sui::table::{Self, Table};
     
     /// The sgSUI token type - represents a closed-loop token for campaign fund distribution
@@ -30,6 +26,8 @@ module suigive::sg_sui_token {
         // Track total minted and redeemed amounts
         total_minted: u64,
         total_redeemed: u64,
+        // Store burned sgSUI tokens (workaround until we have treasury cap access)
+        burned_tokens: Balance<SG_SUI_TOKEN>,
     }
     
     /// Event emitted when sgSUI tokens are minted
@@ -76,6 +74,7 @@ module suigive::sg_sui_token {
             campaign_balances: table::new(ctx),
             total_minted: 0,
             total_redeemed: 0,
+            burned_tokens: balance::zero(),
         };
         
         // Emit an event with the treasury ID to make it easier to find
@@ -191,8 +190,10 @@ module suigive::sg_sui_token {
         // Update total redeemed
         treasury.total_redeemed = treasury.total_redeemed + amount;
         
-        // Destroy the sgSUI tokens
-        coin::destroy_zero(sg_sui);
+        // Burn the sgSUI tokens by storing them in the treasury
+        // In production, these would be properly burned with treasury cap
+        let sg_sui_balance = coin::into_balance(sg_sui);
+        balance::join(&mut treasury.burned_tokens, sg_sui_balance);
         
         // Extract SUI from treasury
         let sui_funds = balance::split(&mut treasury.balance, amount);

@@ -1,13 +1,6 @@
 module suigive::sg_usd {
     use sui::coin::{Self, TreasuryCap, Coin};
     use sui::url;
-    use sui::object::{Self, UID};
-    use sui::transfer;
-    use sui::tx_context::{Self, TxContext};
-    use std::option;
-    
-    #[test_only]
-    use sui::test_scenario;
 
     /// The type identifier of the sgUSD currency
     public struct SG_USD has drop {}
@@ -21,7 +14,6 @@ module suigive::sg_usd {
 
     /// Error codes
     const EMintingDisabled: u64 = 0;
-    const ENotAuthorized: u64 = 1;
 
     /// One-time witness for the currency
     fun init(witness: SG_USD, ctx: &mut TxContext) {

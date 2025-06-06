@@ -4,11 +4,9 @@ module suigive::enhanced_tests {
     use sui::coin::{Self};
     use sui::sui::SUI;
     use sui::test_utils::assert_eq;
-    use std::string::{utf8, String};
-    use std::vector;
+    use std::string::{utf8};
     use suigive::crowdfunding::{Self, Registry, Campaign, CampaignOwnerCap};
-    use suigive::donation_receipt::{Self, DonationReceipt, AdminCap};
-    use suigive::sg_sui_token::{Self, SgSuiTreasury, SgSuiMinterCap, SG_SUI_TOKEN};
+    use suigive::sg_sui_token::{Self, SgSuiTreasury, SgSuiMinterCap};
     
     // Test addresses
     const ADMIN: address = @0xAD;
@@ -22,7 +20,6 @@ module suigive::enhanced_tests {
     const DONATION_AMOUNT: u64 = 500000000; // 0.5 SUI
     const DONATION_AMOUNT2: u64 = 300000000; // 0.3 SUI
     const DISTRIBUTION_AMOUNT: u64 = 200000000; // 0.2 SUI
-    const REFUND_AMOUNT: u64 = 100000000; // 0.1 SUI
     
     #[test]
     fun test_enhanced_donation_flow() {
@@ -163,7 +160,7 @@ module suigive::enhanced_tests {
         ts::next_tx(scenario, DONOR);
         {
             // Take the campaign and registry
-            let mut registry = ts::take_shared<Registry>(scenario);
+            let registry = ts::take_shared<Registry>(scenario);
             let campaigns = crowdfunding::get_all_campaigns(&registry);
             let campaign_id = *vector::borrow(&campaigns, 0);
             let mut campaign = ts::take_shared_by_id<Campaign>(scenario, campaign_id);
@@ -197,7 +194,7 @@ module suigive::enhanced_tests {
         ts::next_tx(scenario, DONOR2);
         {
             // Take the campaign and registry
-            let mut registry = ts::take_shared<Registry>(scenario);
+            let registry = ts::take_shared<Registry>(scenario);
             let campaigns = crowdfunding::get_all_campaigns(&registry);
             let campaign_id = *vector::borrow(&campaigns, 0);
             let mut campaign = ts::take_shared_by_id<Campaign>(scenario, campaign_id);
@@ -228,7 +225,7 @@ module suigive::enhanced_tests {
         ts::next_tx(scenario, CREATOR);
         {
             // Take the campaign and owner cap
-            let mut registry = ts::take_shared<Registry>(scenario);
+            let registry = ts::take_shared<Registry>(scenario);
             let campaigns = crowdfunding::get_all_campaigns(&registry);
             let campaign_id = *vector::borrow(&campaigns, 0);
             let mut campaign = ts::take_shared_by_id<Campaign>(scenario, campaign_id);
@@ -262,7 +259,7 @@ module suigive::enhanced_tests {
         };
     }
     
-    fun process_refund(scenario: &mut Scenario) {
+    fun process_refund(_scenario: &mut Scenario) {
         // Implementation for refund processing would go here
         // This is a placeholder for future implementation
     }
@@ -271,7 +268,7 @@ module suigive::enhanced_tests {
         ts::next_tx(scenario, SERVICE_PROVIDER);
         {
             // Take the sgSUI treasury
-            let mut treasury = ts::take_shared<SgSuiTreasury>(scenario);
+            let treasury = ts::take_shared<SgSuiTreasury>(scenario);
             
             // Note: In a real scenario, we would:
             // 1. Take the SG_SUI_TOKEN from the SERVICE_PROVIDER

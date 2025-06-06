@@ -3,7 +3,6 @@ module suigive::sg_usd_tests {
     use sui::test_scenario::{Self as ts, Scenario};
     use sui::coin::{Self};
     use sui::test_utils::assert_eq;
-    use std::vector;
     use suigive::sg_usd::{Self, SGUSD_Manager, SG_USD};
     
     // Test addresses

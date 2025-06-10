@@ -1,6 +1,6 @@
 // SuiGive Crowdfunding Smart Contract
 // A decentralized crowdfunding platform built on Sui blockchain
-module suigive::crowdfunding {
+module suigive::crowdfunding_old {
     // Import required modules
     use sui::object;
     use sui::coin;

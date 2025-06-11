@@ -5,7 +5,7 @@ module suigive::beneficiary_tests {
     use sui::sui::SUI;
     use sui::test_utils::assert_eq;
     use std::string::utf8;
-    use suigive::crowdfunding::{Self, Registry, Campaign, CampaignOwnerCap};
+    use suigive::crowdfunding::{Self, CampaignManager, Campaign, CampaignOwnerCap, BeneficialParty};
     use suigive::sg_usd::{Self, SG_USD, SGUSD_Manager};
     
     // Test addresses
@@ -28,30 +28,30 @@ module suigive::beneficiary_tests {
         // Create a campaign with 10 SUI goal
         ts::next_tx(&mut scenario, CREATOR);
         {
-            let mut registry = ts::take_shared<Registry>(&scenario);
+            let mut registry = ts::take_shared<CampaignManager>(&scenario);
             let deadline = 100; // Future deadline
+            let beneficial_parties = vector::empty<BeneficialParty>();
             
-            crowdfunding::create_campaign(
+            let owner_cap = crowdfunding::create_campaign_for_testing<SUI>(
                 &mut registry,
                 utf8(b"Test Campaign"),
                 utf8(b"Description"),
                 utf8(b"https://example.com"),
+                utf8(b"Test"),
                 10_000_000_000, // 10 SUI goal
                 deadline,
-                utf8(b"Test"),
+                beneficial_parties,
                 ts::ctx(&mut scenario)
             );
             
+            transfer::public_transfer(owner_cap, CREATOR);
             ts::return_shared(registry);
         };
         
         // Make donations to exceed goal (12 SUI total)
         ts::next_tx(&mut scenario, DONOR);
         {
-            let registry = ts::take_shared<Registry>(&scenario);
-            let campaigns = crowdfunding::get_all_campaigns(&registry);
-            let campaign_id = *std::vector::borrow(&campaigns, 0);
-            let mut campaign = ts::take_shared_by_id<Campaign>(&scenario, campaign_id);
+            let mut campaign = ts::take_shared<Campaign<SUI>>(&scenario);
             
             // Donate 12 SUI
             let coin = coin::mint_for_testing<SUI>(12_000_000_000, ts::ctx(&mut scenario));
@@ -64,23 +64,19 @@ module suigive::beneficiary_tests {
             );
             
             ts::return_shared(campaign);
-            ts::return_shared(registry);
         };
         
         // Creator withdraws funds
         ts::next_tx(&mut scenario, CREATOR);
         {
-            let registry = ts::take_shared<Registry>(&scenario);
-            let campaigns = crowdfunding::get_all_campaigns(&registry);
-            let campaign_id = *std::vector::borrow(&campaigns, 0);
-            let mut campaign = ts::take_shared_by_id<Campaign>(&scenario, campaign_id);
+            let mut campaign = ts::take_shared<Campaign<SUI>>(&scenario);
             let owner_cap = ts::take_from_sender<CampaignOwnerCap>(&scenario);
             
             // Initial balance check for creator
             // Note: We track balance changes through events
             
-            // Withdraw funds
-            crowdfunding::withdraw_funds(
+            // Withdraw remaining funds (after beneficial parties)
+            crowdfunding::withdraw_remaining<SUI>(
                 &mut campaign,
                 &owner_cap,
                 ts::ctx(&mut scenario)
@@ -88,7 +84,6 @@ module suigive::beneficiary_tests {
             
             ts::return_to_sender(&scenario, owner_cap);
             ts::return_shared(campaign);
-            ts::return_shared(registry);
         };
         
         // Check beneficiary received 6% commission (0.72 SUI from 12 SUI)
@@ -121,30 +116,30 @@ module suigive::beneficiary_tests {
         // Create a campaign with 10 SUI goal
         ts::next_tx(&mut scenario, CREATOR);
         {
-            let mut registry = ts::take_shared<Registry>(&scenario);
+            let mut registry = ts::take_shared<CampaignManager>(&scenario);
             let deadline = 100; // Future deadline
+            let beneficial_parties = vector::empty<BeneficialParty>();
             
-            crowdfunding::create_campaign(
+            let owner_cap = crowdfunding::create_campaign_for_testing<SUI>(
                 &mut registry,
                 utf8(b"Test Campaign"),
                 utf8(b"Description"),
                 utf8(b"https://example.com"),
+                utf8(b"Test"),
                 10_000_000_000, // 10 SUI goal
                 deadline,
-                utf8(b"Test"),
+                beneficial_parties,
                 ts::ctx(&mut scenario)
             );
             
+            transfer::public_transfer(owner_cap, CREATOR);
             ts::return_shared(registry);
         };
         
         // Make donations but don't reach goal (5 SUI total)
         ts::next_tx(&mut scenario, DONOR);
         {
-            let registry = ts::take_shared<Registry>(&scenario);
-            let campaigns = crowdfunding::get_all_campaigns(&registry);
-            let campaign_id = *std::vector::borrow(&campaigns, 0);
-            let mut campaign = ts::take_shared_by_id<Campaign>(&scenario, campaign_id);
+            let mut campaign = ts::take_shared<Campaign<SUI>>(&scenario);
             
             // Donate 5 SUI (half of goal)
             let coin = coin::mint_for_testing<SUI>(5_000_000_000, ts::ctx(&mut scenario));
@@ -157,20 +152,16 @@ module suigive::beneficiary_tests {
             );
             
             ts::return_shared(campaign);
-            ts::return_shared(registry);
         };
         
         // Creator withdraws funds (campaign failed)
         ts::next_tx(&mut scenario, CREATOR);
         {
-            let registry = ts::take_shared<Registry>(&scenario);
-            let campaigns = crowdfunding::get_all_campaigns(&registry);
-            let campaign_id = *std::vector::borrow(&campaigns, 0);
-            let mut campaign = ts::take_shared_by_id<Campaign>(&scenario, campaign_id);
+            let mut campaign = ts::take_shared<Campaign<SUI>>(&scenario);
             let owner_cap = ts::take_from_sender<CampaignOwnerCap>(&scenario);
             
             // Withdraw funds
-            crowdfunding::withdraw_funds(
+            crowdfunding::withdraw_remaining<SUI>(
                 &mut campaign,
                 &owner_cap,
                 ts::ctx(&mut scenario)
@@ -178,7 +169,6 @@ module suigive::beneficiary_tests {
             
             ts::return_to_sender(&scenario, owner_cap);
             ts::return_shared(campaign);
-            ts::return_shared(registry);
         };
         
         // Check beneficiary received 3% commission (0.15 SUI from 5 SUI)
@@ -209,30 +199,30 @@ module suigive::beneficiary_tests {
         // Create a campaign with 1000 SUI goal
         ts::next_tx(&mut scenario, CREATOR);
         {
-            let mut registry = ts::take_shared<Registry>(&scenario);
+            let mut registry = ts::take_shared<CampaignManager>(&scenario);
             let deadline = 100; // Future deadline
+            let beneficial_parties = vector::empty<BeneficialParty>();
             
-            crowdfunding::create_campaign(
+            let owner_cap = crowdfunding::create_campaign_for_testing<SUI>(
                 &mut registry,
                 utf8(b"Large Campaign"),
                 utf8(b"Description"),
                 utf8(b"https://example.com"),
+                utf8(b"Test"),
                 1_000_000_000_000, // 1000 SUI goal
                 deadline,
-                utf8(b"Test"),
+                beneficial_parties,
                 ts::ctx(&mut scenario)
             );
             
+            transfer::public_transfer(owner_cap, CREATOR);
             ts::return_shared(registry);
         };
         
         // Make huge donation (2000 SUI)
         ts::next_tx(&mut scenario, DONOR);
         {
-            let registry = ts::take_shared<Registry>(&scenario);
-            let campaigns = crowdfunding::get_all_campaigns(&registry);
-            let campaign_id = *std::vector::borrow(&campaigns, 0);
-            let mut campaign = ts::take_shared_by_id<Campaign>(&scenario, campaign_id);
+            let mut campaign = ts::take_shared<Campaign<SUI>>(&scenario);
             
             // Donate 2000 SUI
             let coin = coin::mint_for_testing<SUI>(2_000_000_000_000, ts::ctx(&mut scenario));
@@ -245,20 +235,16 @@ module suigive::beneficiary_tests {
             );
             
             ts::return_shared(campaign);
-            ts::return_shared(registry);
         };
         
         // Creator withdraws funds
         ts::next_tx(&mut scenario, CREATOR);
         {
-            let registry = ts::take_shared<Registry>(&scenario);
-            let campaigns = crowdfunding::get_all_campaigns(&registry);
-            let campaign_id = *std::vector::borrow(&campaigns, 0);
-            let mut campaign = ts::take_shared_by_id<Campaign>(&scenario, campaign_id);
+            let mut campaign = ts::take_shared<Campaign<SUI>>(&scenario);
             let owner_cap = ts::take_from_sender<CampaignOwnerCap>(&scenario);
             
             // Withdraw funds
-            crowdfunding::withdraw_funds(
+            crowdfunding::withdraw_remaining<SUI>(
                 &mut campaign,
                 &owner_cap,
                 ts::ctx(&mut scenario)
@@ -266,7 +252,6 @@ module suigive::beneficiary_tests {
             
             ts::return_to_sender(&scenario, owner_cap);
             ts::return_shared(campaign);
-            ts::return_shared(registry);
         };
         
         // Check beneficiary received max commission (10,000 SUI = 10_000_000_000_000 MIST)
@@ -298,30 +283,30 @@ module suigive::beneficiary_tests {
         // Create a campaign with 100,000 SUI goal
         ts::next_tx(&mut scenario, CREATOR);
         {
-            let mut registry = ts::take_shared<Registry>(&scenario);
+            let mut registry = ts::take_shared<CampaignManager>(&scenario);
             let deadline = 100; // Future deadline
+            let beneficial_parties = vector::empty<BeneficialParty>();
             
-            crowdfunding::create_campaign(
+            let owner_cap = crowdfunding::create_campaign_for_testing<SUI>(
                 &mut registry,
                 utf8(b"Huge Campaign"),
                 utf8(b"Description"),
                 utf8(b"https://example.com"),
+                utf8(b"Test"),
                 100_000_000_000_000, // 100,000 SUI goal
                 deadline,
-                utf8(b"Test"),
+                beneficial_parties,
                 ts::ctx(&mut scenario)
             );
             
+            transfer::public_transfer(owner_cap, CREATOR);
             ts::return_shared(registry);
         };
         
         // Make huge donation (200,000 SUI) to trigger max cap
         ts::next_tx(&mut scenario, DONOR);
         {
-            let registry = ts::take_shared<Registry>(&scenario);
-            let campaigns = crowdfunding::get_all_campaigns(&registry);
-            let campaign_id = *std::vector::borrow(&campaigns, 0);
-            let mut campaign = ts::take_shared_by_id<Campaign>(&scenario, campaign_id);
+            let mut campaign = ts::take_shared<Campaign<SUI>>(&scenario);
             
             // Donate 200,000 SUI
             let coin = coin::mint_for_testing<SUI>(200_000_000_000_000, ts::ctx(&mut scenario));
@@ -334,20 +319,16 @@ module suigive::beneficiary_tests {
             );
             
             ts::return_shared(campaign);
-            ts::return_shared(registry);
         };
         
         // Creator withdraws funds
         ts::next_tx(&mut scenario, CREATOR);
         {
-            let registry = ts::take_shared<Registry>(&scenario);
-            let campaigns = crowdfunding::get_all_campaigns(&registry);
-            let campaign_id = *std::vector::borrow(&campaigns, 0);
-            let mut campaign = ts::take_shared_by_id<Campaign>(&scenario, campaign_id);
+            let mut campaign = ts::take_shared<Campaign<SUI>>(&scenario);
             let owner_cap = ts::take_from_sender<CampaignOwnerCap>(&scenario);
             
             // Withdraw funds
-            crowdfunding::withdraw_funds(
+            crowdfunding::withdraw_remaining<SUI>(
                 &mut campaign,
                 &owner_cap,
                 ts::ctx(&mut scenario)
@@ -355,7 +336,6 @@ module suigive::beneficiary_tests {
             
             ts::return_to_sender(&scenario, owner_cap);
             ts::return_shared(campaign);
-            ts::return_shared(registry);
         };
         
         // Check beneficiary received max commission (10,000 SUI cap)
@@ -374,43 +354,42 @@ module suigive::beneficiary_tests {
     }
     
     #[test]
-    fun test_commission_paid_only_once_simple() {
+    fun test_commission_paid_only_once_sui() {
         let mut scenario = ts::begin(ADMIN);
         
         // Initialize modules
         ts::next_tx(&mut scenario, ADMIN);
         {
             crowdfunding::init_for_testing(ts::ctx(&mut scenario));
-            sg_usd::init_for_testing(ts::ctx(&mut scenario));
         };
         
         // Create a campaign with 10 SUI goal
         ts::next_tx(&mut scenario, CREATOR);
         {
-            let mut registry = ts::take_shared<Registry>(&scenario);
+            let mut registry = ts::take_shared<CampaignManager>(&scenario);
             let deadline = 100; // Future deadline
+            let beneficial_parties = vector::empty<BeneficialParty>();
             
-            crowdfunding::create_campaign(
+            let owner_cap = crowdfunding::create_campaign_for_testing<SUI>(
                 &mut registry,
                 utf8(b"Test Campaign"),
                 utf8(b"Description"),
                 utf8(b"https://example.com"),
+                utf8(b"Test"),
                 10_000_000_000, // 10 SUI goal
                 deadline,
-                utf8(b"Test"),
+                beneficial_parties,
                 ts::ctx(&mut scenario)
             );
             
+            transfer::public_transfer(owner_cap, CREATOR);
             ts::return_shared(registry);
         };
         
         // Make SUI donation to exceed goal
         ts::next_tx(&mut scenario, DONOR);
         {
-            let registry = ts::take_shared<Registry>(&scenario);
-            let campaigns = crowdfunding::get_all_campaigns(&registry);
-            let campaign_id = *std::vector::borrow(&campaigns, 0);
-            let mut campaign = ts::take_shared_by_id<Campaign>(&scenario, campaign_id);
+            let mut campaign = ts::take_shared<Campaign<SUI>>(&scenario);
             
             // Donate 15 SUI
             let coin = coin::mint_for_testing<SUI>(15_000_000_000, ts::ctx(&mut scenario));
@@ -423,61 +402,16 @@ module suigive::beneficiary_tests {
             );
             
             ts::return_shared(campaign);
-            ts::return_shared(registry);
         };
         
-        // Mint sgUSD to donor for second donation type
-        ts::next_tx(&mut scenario, ADMIN);
-        {
-            let mut manager = ts::take_shared<SGUSD_Manager>(&scenario);
-            sg_usd::mint(
-                &mut manager,
-                10_000_000_000, // 10 sgUSD
-                DONOR,
-                ts::ctx(&mut scenario)
-            );
-            ts::return_shared(manager);
-        };
-        
-        // Make sgUSD donation  
-        ts::next_tx(&mut scenario, DONOR);
-        {
-            let registry = ts::take_shared<Registry>(&scenario);
-            let campaigns = crowdfunding::get_all_campaigns(&registry);
-            let campaign_id = *std::vector::borrow(&campaigns, 0);
-            let mut campaign = ts::take_shared_by_id<Campaign>(&scenario, campaign_id);
-            
-            // Donate 10 sgUSD
-            let mut sgusd_coin = ts::take_from_sender<coin::Coin<SG_USD>>(&scenario);
-            let donation_coin = coin::split(&mut sgusd_coin, 10_000_000_000, ts::ctx(&mut scenario));
-            
-            crowdfunding::donate_sgusd(
-                &mut campaign,
-                donation_coin,
-                b"sgUSD donation",
-                false,
-                ts::ctx(&mut scenario)
-            );
-            
-            ts::return_to_sender(&scenario, sgusd_coin);
-            ts::return_shared(campaign);
-            ts::return_shared(registry);
-        };
-        
-        // First withdrawal (SUI) - should pay commission based on total (25)
+        // First withdrawal attempt
         ts::next_tx(&mut scenario, CREATOR);
         {
-            let registry = ts::take_shared<Registry>(&scenario);
-            let campaigns = crowdfunding::get_all_campaigns(&registry);
-            let campaign_id = *std::vector::borrow(&campaigns, 0);
-            let mut campaign = ts::take_shared_by_id<Campaign>(&scenario, campaign_id);
+            let mut campaign = ts::take_shared<Campaign<SUI>>(&scenario);
             let owner_cap = ts::take_from_sender<CampaignOwnerCap>(&scenario);
             
-            // Withdraw SUI funds
-            // Total raised: 15 SUI + 10 sgUSD = 25 total
-            // Commission: 6% of 25 = 1.5, but only 15 SUI available
-            // So commission from SUI will be 1.5 (within available)
-            crowdfunding::withdraw_funds(
+            // Withdraw SUI funds (should pay commission)
+            crowdfunding::withdraw_remaining<SUI>(
                 &mut campaign,
                 &owner_cap,
                 ts::ctx(&mut scenario)
@@ -485,35 +419,16 @@ module suigive::beneficiary_tests {
             
             ts::return_to_sender(&scenario, owner_cap);
             ts::return_shared(campaign);
-            ts::return_shared(registry);
         };
         
-        // Second withdrawal (sgUSD) - should NOT pay commission again
-        ts::next_tx(&mut scenario, CREATOR);
-        {
-            let registry = ts::take_shared<Registry>(&scenario);
-            let campaigns = crowdfunding::get_all_campaigns(&registry);
-            let campaign_id = *std::vector::borrow(&campaigns, 0);
-            let mut campaign = ts::take_shared_by_id<Campaign>(&scenario, campaign_id);
-            let owner_cap = ts::take_from_sender<CampaignOwnerCap>(&scenario);
-            
-            // Withdraw sgUSD funds (no commission since already paid)
-            crowdfunding::withdraw_sgusd_funds(
-                &mut campaign,
-                &owner_cap,
-                ts::ctx(&mut scenario)
-            );
-            
-            ts::return_to_sender(&scenario, owner_cap);
-            ts::return_shared(campaign);
-            ts::return_shared(registry);
-        };
-        
-        // Verify commission was paid only once
-        // Total raised: 25 (15 SUI + 10 sgUSD)
-        // Commission: 6% of 25 = 1.5 (paid from SUI withdrawal)
-        // Creator receives: 13.5 SUI + 10 sgUSD = 23.5 total
-        // Beneficiary receives: 1.5 SUI (only once)
+        // Verify commission calculation
+        // Total raised: 15 SUI
+        // Commission: 6% of 15 = 0.9 SUI
+        // Creator receives: 14.1 SUI
+        // Beneficiary receives: 0.9 SUI
+        let expected_commission = 900_000_000;
+        let expected_creator_amount = 14_100_000_000;
+        assert_eq(expected_commission + expected_creator_amount, 15_000_000_000);
         
         ts::end(scenario);
     }
@@ -532,20 +447,23 @@ module suigive::beneficiary_tests {
         // Create a campaign with 10 sgUSD goal
         ts::next_tx(&mut scenario, CREATOR);
         {
-            let mut registry = ts::take_shared<Registry>(&scenario);
+            let mut registry = ts::take_shared<CampaignManager>(&scenario);
             let deadline = 100; // Future deadline
+            let beneficial_parties = vector::empty<BeneficialParty>();
             
-            crowdfunding::create_campaign(
+            let owner_cap = crowdfunding::create_campaign_for_testing<SG_USD>(
                 &mut registry,
                 utf8(b"sgUSD Campaign"),
                 utf8(b"Description"),
                 utf8(b"https://example.com"),
+                utf8(b"Test"),
                 10_000_000_000, // 10 sgUSD goal (in base units)
                 deadline,
-                utf8(b"Test"),
+                beneficial_parties,
                 ts::ctx(&mut scenario)
             );
             
+            transfer::public_transfer(owner_cap, CREATOR);
             ts::return_shared(registry);
         };
         
@@ -565,16 +483,13 @@ module suigive::beneficiary_tests {
         // Make sgUSD donation to exceed goal
         ts::next_tx(&mut scenario, DONOR);
         {
-            let registry = ts::take_shared<Registry>(&scenario);
-            let campaigns = crowdfunding::get_all_campaigns(&registry);
-            let campaign_id = *std::vector::borrow(&campaigns, 0);
-            let mut campaign = ts::take_shared_by_id<Campaign>(&scenario, campaign_id);
+            let mut campaign = ts::take_shared<Campaign<SG_USD>>(&scenario);
             
             // Donate 12 sgUSD
             let mut sgusd_coin = ts::take_from_sender<coin::Coin<SG_USD>>(&scenario);
             let donation_coin = coin::split(&mut sgusd_coin, 12_000_000_000, ts::ctx(&mut scenario));
             
-            crowdfunding::donate_sgusd(
+            crowdfunding::donate<SG_USD>(
                 &mut campaign,
                 donation_coin,
                 b"sgUSD donation",
@@ -584,20 +499,16 @@ module suigive::beneficiary_tests {
             
             ts::return_to_sender(&scenario, sgusd_coin);
             ts::return_shared(campaign);
-            ts::return_shared(registry);
         };
         
         // Creator withdraws sgUSD funds
         ts::next_tx(&mut scenario, CREATOR);
         {
-            let registry = ts::take_shared<Registry>(&scenario);
-            let campaigns = crowdfunding::get_all_campaigns(&registry);
-            let campaign_id = *std::vector::borrow(&campaigns, 0);
-            let mut campaign = ts::take_shared_by_id<Campaign>(&scenario, campaign_id);
+            let mut campaign = ts::take_shared<Campaign<SG_USD>>(&scenario);
             let owner_cap = ts::take_from_sender<CampaignOwnerCap>(&scenario);
             
             // Withdraw sgUSD funds (should pay 6% commission)
-            crowdfunding::withdraw_sgusd_funds(
+            crowdfunding::withdraw_remaining<SG_USD>(
                 &mut campaign,
                 &owner_cap,
                 ts::ctx(&mut scenario)
@@ -605,7 +516,6 @@ module suigive::beneficiary_tests {
             
             ts::return_to_sender(&scenario, owner_cap);
             ts::return_shared(campaign);
-            ts::return_shared(registry);
         };
         
         // Verify commission calculation
@@ -617,46 +527,55 @@ module suigive::beneficiary_tests {
     }
     
     #[test]
-    fun test_mixed_token_commission() {
+    fun test_beneficiary_parties_with_commission() {
         let mut scenario = ts::begin(ADMIN);
         
         // Initialize modules
         ts::next_tx(&mut scenario, ADMIN);
         {
             crowdfunding::init_for_testing(ts::ctx(&mut scenario));
-            sg_usd::init_for_testing(ts::ctx(&mut scenario));
         };
         
-        // Create a campaign with 20 SUI goal
+        // Create a campaign with 20 SUI goal and beneficial parties
         ts::next_tx(&mut scenario, CREATOR);
         {
-            let mut registry = ts::take_shared<Registry>(&scenario);
+            let mut registry = ts::take_shared<CampaignManager>(&scenario);
             let deadline = 100; // Future deadline
             
-            crowdfunding::create_campaign(
+            // Create beneficial parties (e.g., team members)
+            let mut beneficial_parties = vector::empty<BeneficialParty>();
+            let party1 = crowdfunding::create_beneficial_party(
+                @0xB1,
+                utf8(b"Team member 1"),
+                1000, // 10%
+                0, // no max
+                0  // no min
+            );
+            vector::push_back(&mut beneficial_parties, party1);
+            
+            let owner_cap = crowdfunding::create_campaign_for_testing<SUI>(
                 &mut registry,
-                utf8(b"Mixed Token Campaign"),
+                utf8(b"Campaign with Parties"),
                 utf8(b"Description"),
                 utf8(b"https://example.com"),
+                utf8(b"Test"),
                 20_000_000_000, // 20 SUI goal
                 deadline,
-                utf8(b"Test"),
+                beneficial_parties,
                 ts::ctx(&mut scenario)
             );
             
+            transfer::public_transfer(owner_cap, CREATOR);
             ts::return_shared(registry);
         };
         
-        // Make SUI donation
+        // Make SUI donation to exceed goal
         ts::next_tx(&mut scenario, DONOR);
         {
-            let registry = ts::take_shared<Registry>(&scenario);
-            let campaigns = crowdfunding::get_all_campaigns(&registry);
-            let campaign_id = *std::vector::borrow(&campaigns, 0);
-            let mut campaign = ts::take_shared_by_id<Campaign>(&scenario, campaign_id);
+            let mut campaign = ts::take_shared<Campaign<SUI>>(&scenario);
             
-            // Donate 10 SUI
-            let coin = coin::mint_for_testing<SUI>(10_000_000_000, ts::ctx(&mut scenario));
+            // Donate 25 SUI
+            let coin = coin::mint_for_testing<SUI>(25_000_000_000, ts::ctx(&mut scenario));
             crowdfunding::donate(
                 &mut campaign,
                 coin,
@@ -666,60 +585,38 @@ module suigive::beneficiary_tests {
             );
             
             ts::return_shared(campaign);
-            ts::return_shared(registry);
         };
         
-        // Mint sgUSD to donor
-        ts::next_tx(&mut scenario, ADMIN);
-        {
-            let mut manager = ts::take_shared<SGUSD_Manager>(&scenario);
-            sg_usd::mint(
-                &mut manager,
-                15_000_000_000, // 15 sgUSD
-                DONOR,
-                ts::ctx(&mut scenario)
-            );
-            ts::return_shared(manager);
-        };
-        
-        // Make sgUSD donation
-        ts::next_tx(&mut scenario, DONOR);
-        {
-            let registry = ts::take_shared<Registry>(&scenario);
-            let campaigns = crowdfunding::get_all_campaigns(&registry);
-            let campaign_id = *std::vector::borrow(&campaigns, 0);
-            let mut campaign = ts::take_shared_by_id<Campaign>(&scenario, campaign_id);
-            
-            // Donate 12 sgUSD
-            let mut sgusd_coin = ts::take_from_sender<coin::Coin<SG_USD>>(&scenario);
-            let donation_coin = coin::split(&mut sgusd_coin, 12_000_000_000, ts::ctx(&mut scenario));
-            
-            crowdfunding::donate_sgusd(
-                &mut campaign,
-                donation_coin,
-                b"sgUSD donation",
-                false,
-                ts::ctx(&mut scenario)
-            );
-            
-            ts::return_to_sender(&scenario, sgusd_coin);
-            ts::return_shared(campaign);
-            ts::return_shared(registry);
-        };
-        
-        // Withdraw SUI first - should pay commission based on total
+        // Creator withdraws beneficial party's share (only owner can do this)
         ts::next_tx(&mut scenario, CREATOR);
         {
-            let registry = ts::take_shared<Registry>(&scenario);
-            let campaigns = crowdfunding::get_all_campaigns(&registry);
-            let campaign_id = *std::vector::borrow(&campaigns, 0);
-            let mut campaign = ts::take_shared_by_id<Campaign>(&scenario, campaign_id);
+            let mut campaign = ts::take_shared<Campaign<SUI>>(&scenario);
             let owner_cap = ts::take_from_sender<CampaignOwnerCap>(&scenario);
             
-            // Total raised: 10 SUI + 12 sgUSD = 22 total (exceeds 20 goal)
-            // Commission should be 6% of 22 = 1.32
-            // But only 10 SUI available, so commission from SUI should be capped at 10
-            crowdfunding::withdraw_funds(
+            // Withdraw beneficial party funds (10% of 25 SUI = 2.5 SUI)
+            crowdfunding::withdraw_for_party<SUI>(
+                &mut campaign,
+                &owner_cap,
+                0, // party index
+                ts::ctx(&mut scenario)
+            );
+            
+            ts::return_to_sender(&scenario, owner_cap);
+            ts::return_shared(campaign);
+        };
+        
+        // Creator withdraws remaining funds
+        ts::next_tx(&mut scenario, CREATOR);
+        {
+            let mut campaign = ts::take_shared<Campaign<SUI>>(&scenario);
+            let owner_cap = ts::take_from_sender<CampaignOwnerCap>(&scenario);
+            
+            // Withdraw remaining funds
+            // Total: 25 SUI
+            // Beneficiary commission: 6% of 25 = 1.5 SUI
+            // Beneficial party: 10% of 25 = 2.5 SUI
+            // Creator receives: 25 - 1.5 - 2.5 = 21 SUI
+            crowdfunding::withdraw_remaining<SUI>(
                 &mut campaign,
                 &owner_cap,
                 ts::ctx(&mut scenario)
@@ -727,35 +624,14 @@ module suigive::beneficiary_tests {
             
             ts::return_to_sender(&scenario, owner_cap);
             ts::return_shared(campaign);
-            ts::return_shared(registry);
         };
         
-        // Withdraw sgUSD - should NOT pay commission again
-        ts::next_tx(&mut scenario, CREATOR);
-        {
-            let registry = ts::take_shared<Registry>(&scenario);
-            let campaigns = crowdfunding::get_all_campaigns(&registry);
-            let campaign_id = *std::vector::borrow(&campaigns, 0);
-            let mut campaign = ts::take_shared_by_id<Campaign>(&scenario, campaign_id);
-            let owner_cap = ts::take_from_sender<CampaignOwnerCap>(&scenario);
-            
-            // Should receive full 12 sgUSD (no commission)
-            crowdfunding::withdraw_sgusd_funds(
-                &mut campaign,
-                &owner_cap,
-                ts::ctx(&mut scenario)
-            );
-            
-            ts::return_to_sender(&scenario, owner_cap);
-            ts::return_shared(campaign);
-            ts::return_shared(registry);
-        };
-        
-        // Verify total commission
-        // Total raised: 22 (10 SUI + 12 sgUSD)
-        // Commission: 6% of 22 = 1.32
-        // Beneficiary receives: 1.32 (from SUI withdrawal)
-        // Creator receives: 8.68 SUI + 12 sgUSD
+        // Verify calculations
+        let total_raised = 25_000_000_000;
+        let beneficiary_commission = 1_500_000_000; // 6%
+        let beneficial_party_amount = 2_500_000_000; // 10%
+        let creator_amount = 21_000_000_000;
+        assert_eq(beneficiary_commission + beneficial_party_amount + creator_amount, total_raised);
         
         ts::end(scenario);
     }

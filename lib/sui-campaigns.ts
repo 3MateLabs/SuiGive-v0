@@ -81,19 +81,23 @@ export async function createCampaign(
   try {
     const tx = new Transaction();
     
-    // Get the registry object
-    const registry = tx.object(SUI_CONFIG.REGISTRY_ID);
+    // Get the campaign manager object
+    const campaignManager = tx.object(SUI_CONFIG.CAMPAIGN_MANAGER_ID);
+    
+    // Create zero SUI coin for creation fee (if no fee is set)
+    const creationFeeCoin = tx.splitCoins(tx.gas, [0]);
     
     tx.moveCall({
-      target: `${SUI_CONFIG.PACKAGE_ID}::crowdfunding::create_campaign`,
+      target: `${SUI_CONFIG.PACKAGE_ID}::crowdfunding::create_campaign<0x2::sui::SUI>`,
       arguments: [
-        registry,
+        campaignManager,
         tx.pure.string(name),
         tx.pure.string(description),
         tx.pure.string(imageUrl),
+        tx.pure.string(category),
         tx.pure.u64(goalAmount),
         tx.pure.u64(deadline),
-        tx.pure.string(category),
+        creationFeeCoin,
       ],
     });
     
@@ -389,7 +393,7 @@ export async function withdrawFunds(
     const capability = tx.object(capabilityId);
     
     tx.moveCall({
-      target: `${SUI_CONFIG.PACKAGE_ID}::crowdfunding::withdraw_funds`,
+      target: `${SUI_CONFIG.PACKAGE_ID}::crowdfunding::withdraw_remaining`,
       arguments: [
         campaign,
         capability,

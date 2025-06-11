@@ -7,12 +7,13 @@ const readline = require('readline');
 
 // Import SUI_CONFIG for testnet
 const SUI_CONFIG = {
-  PACKAGE_ID: '0x049c3080b5e17baf41f64b2fd8503f057bfe79cb1790e23ded612860ed91f187',
-  REGISTRY_ID: '0x0a2dc4ae45c86463b38198fb0f44020b79025e7fb67f620ba38b389cde50933b',
+  PACKAGE_ID: '0x2c197bad6a8f24f57755ebbae999f70cd36dab9934dece4e20b95b6c44743e70',
+  REGISTRY_ID: '0x3238492b12878201b67444e5fd41eb7be91657563ba7cf0e0b772cdd49821cd8',
+  CAMPAIGN_MANAGER_ID: '0x3238492b12878201b67444e5fd41eb7be91657563ba7cf0e0b772cdd49821cd8',
   // SG_USD token type for testnet
-  SG_USD_TYPE: '0x049c3080b5e17baf41f64b2fd8503f057bfe79cb1790e23ded612860ed91f187::sg_usd::SG_USD',
+  SG_USD_TYPE: '0x2c197bad6a8f24f57755ebbae999f70cd36dab9934dece4e20b95b6c44743e70::sg_usd::SG_USD',
   // SgUSD Manager ID for minting test tokens
-  SGUSD_MANAGER_ID: '0x5eac564bc4a2cece19f126be160a752e859114cbd3cc24b23fc1e7f0879cc9c9',
+  SGUSD_MANAGER_ID: '0xe3482d79fd307718c171fe16b655f90add26eb35fdeef6d9640ac9fcbd70085c',
 };
 
 // Campaign ID to donate to

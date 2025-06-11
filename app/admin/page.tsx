@@ -188,6 +188,40 @@ export default function AdminPage() {
     <div className="container mx-auto py-10">
       <h1 className="text-3xl font-bold mb-6">Database Admin</h1>
       
+      {/* Quick Actions */}
+      <div className="mb-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Quick Actions</CardTitle>
+            <CardDescription>Admin tools and management</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <Button 
+                onClick={() => window.location.href = '/admin/proposals'}
+                className="w-full"
+              >
+                Campaign Proposals
+              </Button>
+              <Button 
+                onClick={() => window.location.href = '/create'}
+                className="w-full"
+                variant="outline"
+              >
+                Create Campaign (Direct)
+              </Button>
+              <Button 
+                onClick={() => window.location.href = '/admin/setup'}
+                className="w-full"
+                variant="outline"
+              >
+                Contract Setup
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+      
       <Tabs defaultValue="view" className="w-full">
         <TabsList className="mb-4">
           <TabsTrigger value="view">View Data</TabsTrigger>

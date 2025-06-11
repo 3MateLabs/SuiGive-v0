@@ -124,7 +124,7 @@ export async function withdrawFunds(
     const capability = tx.object(capabilityId);
     
     tx.moveCall({
-      target: `${SUI_CONFIG.PACKAGE_ID}::crowdfunding::withdraw_funds`,
+      target: `${SUI_CONFIG.PACKAGE_ID}::crowdfunding::withdraw_remaining`,
       arguments: [
         campaign,
         capability,

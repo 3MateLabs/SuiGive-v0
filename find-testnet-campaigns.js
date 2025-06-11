@@ -3,8 +3,9 @@ const { SuiClient, getFullnodeUrl } = require('@mysten/sui/client');
 
 // Import SUI_CONFIG from the configuration
 const SUI_CONFIG = {
-  PACKAGE_ID: '0x049c3080b5e17baf41f64b2fd8503f057bfe79cb1790e23ded612860ed91f187',
-  REGISTRY_ID: '0x0a2dc4ae45c86463b38198fb0f44020b79025e7fb67f620ba38b389cde50933b',
+  PACKAGE_ID: '0x2c197bad6a8f24f57755ebbae999f70cd36dab9934dece4e20b95b6c44743e70',
+  REGISTRY_ID: '0x3238492b12878201b67444e5fd41eb7be91657563ba7cf0e0b772cdd49821cd8',
+  CAMPAIGN_MANAGER_ID: '0x3238492b12878201b67444e5fd41eb7be91657563ba7cf0e0b772cdd49821cd8',
   NETWORK: 'testnet',
 };
 

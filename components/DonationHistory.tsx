@@ -68,9 +68,12 @@ export default function DonationHistory() {
 
   // Format currency amount for display
   const formatAmount = (amount: string, currency: string) => {
-    const numAmount = parseFloat(amount) / 1_000_000_000; // Convert from smallest unit
-    // Only show sgUSD donations in the total, but display individual donation currencies
-    return `${numAmount.toLocaleString(undefined, { maximumFractionDigits: 2 })} ${currency}`;
+    // sgUSD has 6 decimals, SUI has 9 decimals
+    const decimals = currency === 'sgUSD' ? 1_000_000 : 1_000_000_000;
+    const numAmount = parseFloat(amount) / decimals;
+    // Add $ prefix for sgUSD
+    const prefix = currency === 'sgUSD' ? '$' : '';
+    return `${prefix}${numAmount.toLocaleString(undefined, { maximumFractionDigits: 2 })} ${currency}`;
   };
 
   if (!currentWallet || !currentWallet.accounts || currentWallet.accounts.length === 0) {

@@ -84,12 +84,12 @@ export const UserProfile: React.FC<UserProfileProps> = ({
     }
   };
 
-  // Format donation amount for display
+  // Format donation amount for display (sgUSD has 6 decimals)
   const formatAmount = (amount: string | undefined) => {
     try {
       if (!amount) return '0.00';
       const bigAmount = BigInt(amount);
-      return (Number(bigAmount) / 1_000_000_000).toFixed(2);
+      return (Number(bigAmount) / 1_000_000).toFixed(2);
     } catch (e) {
       return '0.00';
     }
@@ -331,7 +331,7 @@ export const UserProfile: React.FC<UserProfileProps> = ({
           <div className="grid grid-cols-2 gap-2">
             <div className="bg-gray-50 p-2 rounded">
               <p className="text-sm text-gray-500">Total Donated</p>
-              <p className="font-bold">{formatAmount(profile?.totalDonated || '0')} SUI</p>
+              <p className="font-bold">${formatAmount(profile?.totalDonated || '0')} sgUSD</p>
             </div>
             <div className="bg-gray-50 p-2 rounded">
               <p className="text-sm text-gray-500">Campaigns Supported</p>
@@ -375,7 +375,7 @@ export const UserProfile: React.FC<UserProfileProps> = ({
                 <div>
                   <p className="font-medium">{campaign.name}</p>
                   <p className="text-sm text-gray-500">
-                    {formatAmount(campaign.currentAmount)} / {formatAmount(campaign.goalAmount)} SUI
+                    ${formatAmount(campaign.currentAmount)} / ${formatAmount(campaign.goalAmount)} sgUSD
                   </p>
                 </div>
               </div>

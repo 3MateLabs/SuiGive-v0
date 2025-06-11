@@ -1,20 +1,25 @@
 // Sui contract configuration for SuiGive crowdfunding platform
 export const SUI_CONFIG = {
   // Package ID from the deployed smart contract
-  PACKAGE_ID: '0x049c3080b5e17baf41f64b2fd8503f057bfe79cb1790e23ded612860ed91f187',
-  // Registry object ID that stores all campaigns - will be created on initialization
-  REGISTRY_ID: '0x0a2dc4ae45c86463b38198fb0f44020b79025e7fb67f620ba38b389cde50933b',
+  PACKAGE_ID: '0x2c197bad6a8f24f57755ebbae999f70cd36dab9934dece4e20b95b6c44743e70',
+  // Campaign Manager object ID that manages all campaigns - replaces Registry
+  CAMPAIGN_MANAGER_ID: '0x3238492b12878201b67444e5fd41eb7be91657563ba7cf0e0b772cdd49821cd8',
+  // DEPRECATED: Registry ID (kept for backward compatibility)
+  REGISTRY_ID: '0x3238492b12878201b67444e5fd41eb7be91657563ba7cf0e0b772cdd49821cd8',
   // SgSuiTreasury ID for the closed-loop token system
-  TREASURY_ID: '0x78e9fce20e895c509d525ea53340139a31333bd5afe7fdadbb1d6755f9aa8338',
-  // Treasury Cap ID for the donation token
-  TREASURY_CAP_ID: '0x5afae39c3e945e0a17938e3d46f4d9dd81ae9749380b23f6ca1763e4b44ee7f3',
+  TREASURY_ID: '0x00ac8076d1825502eed6a0bf4763d00e4f34206e93f32c5a088ae638812ece8b',
+  // Treasury Cap ID for the donation token (SG_USD)
+  TREASURY_CAP_ID: '0xd5fe9b32c0f2950d9f4d10f9564c19aca7d5c5f0acf3ddb137ee367fdf9ef106',
   // Campaign ID for the Clean Water Project
   CAMPAIGN_ID: '', // Will be populated after creating a new campaign
   // sgUSD token configuration
-  SGUSD_MANAGER_ID: '0x5eac564bc4a2cece19f126be160a752e859114cbd3cc24b23fc1e7f0879cc9c9',
+  SGUSD_MANAGER_ID: '0xe3482d79fd307718c171fe16b655f90add26eb35fdeef6d9640ac9fcbd70085c',
   // SgSuiMinterCap ID for minting SG_SUI tokens
-  SGSUI_MINTER_CAP_ID: '0xcbdd3d022470545c8555becdd9eb23f48463f1427c72745f1278e71f2f085baa',
-  // Deployer address for admin operations
+  SGSUI_MINTER_CAP_ID: '0x5658f4e1163f4df43e6e41581f1ad1f8302876ddca02badda7974818f0f99d7a',
+  // Admin addresses
+  PUBLISHER_ADDRESS: '0xf1df42d3b603f6d22fc276c25dd1eee4c3f767d7a7e7ec36bf9c3d416a74e228',
+  BENEFICIARY_ADDRESS: '0x4822bfc9c86d1a77daf48b0bdf8f012ae9b7f8f01b4195dc0f3fd4fb838525bd',
+  // Deployer address for admin operations (same as beneficiary)
   DEPLOYER_ADDRESS: '0x4822bfc9c86d1a77daf48b0bdf8f012ae9b7f8f01b4195dc0f3fd4fb838525bd',
   // Network configuration
   NETWORK: 'testnet', // Change to 'mainnet' for production

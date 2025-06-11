@@ -1,11 +1,16 @@
 "use client"
 
-import { useEffect, useState, Suspense } from "react"
-import { Heart, BarChart2, Settings, Wallet as WalletIcon, Activity, Layers, DollarSign, Edit2, Share2, CheckCircle, Clock } from "lucide-react"
+import { useEffect, useState } from "react"
+import { Heart, BarChart2, Settings, Wallet as WalletIcon, Activity, Layers, DollarSign, Edit2, Share2, CheckCircle, Clock, TrendingUp, Users, Target, Calendar, Plus, Upload, ArrowRight, Sparkles, X, Search, Bell, MoreVertical, ExternalLink, Copy, Rocket, ChevronDown } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
 import { useSearchParams, useRouter } from "next/navigation"
 import DonationNFTGallery from "@/components/DonationNFTGallery"
+import { UserProfile } from "@/components/UserProfile"
+import { useCurrentAccount } from '@mysten/dapp-kit'
+import { WalletConnectButton } from "@/components/WalletConnectButton"
+import { motion, AnimatePresence } from 'framer-motion'
+import { ModernCard, ModernCardHeader, ModernCardTitle, ModernCardContent, StatCard } from "@/components/ui/modern-card"
 
 const sidebarLinks = [
   { name: "Dashboard", icon: <BarChart2 className="w-5 h-5" /> },
@@ -17,42 +22,20 @@ const sidebarLinks = [
   { name: "Settings", icon: <Settings className="w-5 h-5" /> },
 ]
 
-const userMock = {
-  name: "Alex Chen",
-  handle: "alex.sui",
-  avatar: "/avatar1.jpg",
-}
-
-// Component to handle search params logic
-function TabInitializer() {
-  const searchParams = useSearchParams();
-  const [initialTab, setInitialTab] = useState("Dashboard");
-  
-  useEffect(() => {
-    if (searchParams) {
-      const tab = searchParams.get("tab");
-      if (tab) {
-        const tabFormatted = tab.charAt(0).toUpperCase() + tab.slice(1).toLowerCase();
-        if (["Dashboard", "My Projects", "Donations", "Activity", "Analytics", "Wallet", "Settings"].includes(tabFormatted)) {
-          setInitialTab(tabFormatted);
-        }
-      }
-    }
-  }, [searchParams]);
-  
-  return initialTab;
-}
-
 export default function DashboardPage() {
   const router = useRouter();
+  const currentAccount = useCurrentAccount();
   const [activeTab, setActiveTab] = useState("Dashboard")
-  
-  // Wrap the search params logic in Suspense
+  const [projectTab, setProjectTab] = useState('Active Projects')
+  const [walletDropdown, setWalletDropdown] = useState(false)
+  const [showNewProjectForm, setShowNewProjectForm] = useState(false)
+  const [notifications, setNotifications] = useState(3)
+  const [searchQuery, setSearchQuery] = useState("")
+
+  // Initialize tab from search params
   useEffect(() => {
-    // Initialize tab from search params
     const initializeTab = async () => {
       const initialTab = await new Promise<string>(resolve => {
-        // Small timeout to ensure client-side rendering is complete
         setTimeout(() => {
           try {
             const params = new URLSearchParams(window.location.search);
@@ -75,28 +58,36 @@ export default function DashboardPage() {
     
     initializeTab();
   }, []);
-  const [wallet, setWallet] = useState("")
-  const [projectTab, setProjectTab] = useState('Active Projects')
-  const [walletDropdown, setWalletDropdown] = useState(false)
-
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      setWallet(localStorage.getItem("suiWallet") || "0x7a9d...3f4d")
-    }
-  }, [])
 
   function shortAddress(addr: string) {
     if (!addr) return '';
     return addr.slice(0, 6) + '...' + addr.slice(-4);
   }
 
-  function handleDisconnect() {
-    if (typeof window !== "undefined") {
-      localStorage.removeItem("suiWallet");
-    }
-    setWallet("");
-    setWalletDropdown(false);
-    router.push("/");
+  // If no wallet connected, show connection prompt
+  if (!currentAccount) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100">
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.5 }}
+          className="bg-white rounded-3xl p-12 shadow-2xl text-center max-w-md"
+        >
+          <motion.div
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
+            className="w-24 h-24 bg-gradient-to-br from-[#0a2233] to-[#18344a] rounded-full flex items-center justify-center mx-auto mb-8"
+          >
+            <WalletIcon className="w-12 h-12 text-white" />
+          </motion.div>
+          <h1 className="text-3xl font-bold text-[#0a2233] mb-4">Connect Your Wallet</h1>
+          <p className="text-gray-600 mb-8 text-lg">Please connect your wallet to access your personalized dashboard</p>
+          <WalletConnectButton />
+        </motion.div>
+      </div>
+    );
   }
 
   const myProjects = [
@@ -109,6 +100,10 @@ export default function DashboardPage() {
       goal: "20,000",
       daysLeft: 12,
       image: "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=600&q=80",
+      status: "active",
+      category: "Healthcare",
+      donors: 427,
+      createdAt: "Apr 10, 2025"
     },
     {
       id: 2,
@@ -119,6 +114,10 @@ export default function DashboardPage() {
       goal: "20,000",
       daysLeft: 25,
       image: "https://images.unsplash.com/photo-1465101046530-73398c7f28ca?auto=format&fit=crop&w=600&q=80",
+      status: "active",
+      category: "Education",
+      donors: 189,
+      createdAt: "Apr 8, 2025"
     },
   ]
 
@@ -128,354 +127,475 @@ export default function DashboardPage() {
       title: "Clean Water Project",
       amount: "500",
       date: "2025-04-01",
+      status: "completed"
     },
     {
       id: 2,
       title: "Healthcare Crowdfund for Alex",
       amount: "750",
       date: "2025-03-28",
+      status: "completed"
     },
     {
       id: 3,
       title: "Community Garden Initiative",
       amount: "250",
       date: "2025-03-15",
+      status: "completed"
     },
   ]
 
   return (
-    <div className="min-h-screen flex bg-[#f6fbfa]">
-      {/* Sidebar */}
-      <aside className="w-64 bg-[#0a2233] text-white flex flex-col justify-between min-h-screen">
+    <div className="min-h-screen flex bg-gradient-to-br from-gray-50 via-white to-gray-50">
+      {/* Modern Sidebar */}
+      <motion.aside 
+        initial={{ x: -100, opacity: 0 }}
+        animate={{ x: 0, opacity: 1 }}
+        transition={{ duration: 0.5 }}
+        className="w-64 bg-white border-r border-gray-200 flex flex-col justify-between min-h-screen"
+      >
         <div>
-          <Link href="/" className="block px-6 py-6 text-2xl font-bold hover:opacity-80 transition-opacity">SuiGives</Link>
-          <nav className="mt-4">
-            {sidebarLinks.map(link => (
-              <div
+          <Link href="/" className="flex items-center gap-3 px-6 py-6 hover:opacity-80 transition-opacity">
+            <motion.div
+              whileHover={{ rotate: 360 }}
+              transition={{ duration: 0.5 }}
+              className="relative"
+            >
+              <img src="/images/TheLogo.png" alt="SuiGives Logo" className="h-12 w-12" />
+              <div className="absolute inset-0 bg-[#4ECDC4] blur-xl opacity-50"></div>
+            </motion.div>
+            <span className="text-xl font-semibold text-[#0a2233]">SuiGives</span>
+          </Link>
+          
+          <nav className="mt-6 px-4">
+            {sidebarLinks.map((link, index) => (
+              <motion.div
                 key={link.name}
-                className={`flex items-center px-6 py-3 cursor-pointer hover:bg-[#18344a] rounded-lg mb-1 ${activeTab === link.name ? "bg-[#18344a]" : ""}`}
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: index * 0.1 }}
+                className="relative mb-2 group"
                 onClick={() => setActiveTab(link.name)}
               >
-                <span className="mr-3">{link.icon}</span>
-                <span className="font-medium">{link.name}</span>
-              </div>
+                <div className={`flex items-center px-4 py-3 cursor-pointer rounded-lg transition-all duration-300 ${
+                  activeTab === link.name 
+                    ? "bg-[#1e3a4c] text-white" 
+                    : "hover:bg-gray-50 text-gray-600"
+                }`}>
+                  <span className={`mr-3 ${activeTab === link.name ? 'text-white' : 'text-gray-500'}`}>{link.icon}</span>
+                  <span className="text-sm font-medium">{link.name}</span>
+                  {link.name === "Activity" && notifications > 0 && (
+                    <span className="ml-auto bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center font-medium shadow-lg">
+                      <span className="leading-none">{notifications}</span>
+                    </span>
+                  )}
+                </div>
+                {activeTab === link.name && (
+                  <motion.div 
+                    layoutId="activeTab"
+                    className="absolute inset-0 bg-[#0a2233]/5 rounded-2xl"
+                    initial={false}
+                    transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                  />
+                )}
+              </motion.div>
             ))}
           </nav>
         </div>
-        <div className="px-6 py-4 border-t border-[#18344a] flex items-center gap-3">
-          <img src={userMock.avatar} alt="avatar" className="w-10 h-10 rounded-full object-cover" />
-          <div>
-            <div className="font-semibold">{userMock.name}</div>
-            <div className="text-xs text-gray-300">{userMock.handle}</div>
-          </div>
+        
+        <div className="p-4">
+          <UserProfile compact={true} editable={false} showDonations={false} showCampaigns={false} />
         </div>
-      </aside>
+      </motion.aside>
 
       {/* Main Content */}
-      <main className="flex-1 p-8">
-        {/* Top bar */}
-        <div className="flex items-center justify-between mb-6">
-          <div className="text-2xl font-bold text-[#0a2233]">{activeTab}</div>
-          <div className="flex items-center gap-4">
-            <input type="text" placeholder="Search..." className="px-4 py-2 rounded bg-[#f1f5f9] border border-gray-200 text-sm" />
-            <button className="relative">
-              <span className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full"></span>
-              <svg width="20" height="20" fill="none" viewBox="0 0 24 24"><path d="M15 17h5l-1.405-1.405A2.032 2.032 0 0 1 18 14.158V11a6.002 6.002 0 0 0-4-5.659V4a2 2 0 1 0-4 0v1.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 1 1-6 0v-1m6 0H9" stroke="#0a2233" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-            </button>
-            {/* Wallet status button */}
-            <div className="relative">
-              <button
-                className="flex items-center gap-2 px-4 py-2 rounded bg-[#1a2a3a] text-white font-mono text-sm hover:bg-[#22334a] border border-[#22334a] focus:outline-none"
-                onClick={() => setWalletDropdown((open) => !open)}
-              >
-                <span className="w-5 h-5 rounded-full bg-[#2d3a4d] flex items-center justify-center">
-                  <svg width="18" height="18" fill="none" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="#fff"/><path d="M7 12h10M7 16h10M7 8h10" stroke="#0a2233" strokeWidth="2" strokeLinecap="round"/></svg>
-                </span>
-                <span>{shortAddress(wallet)}</span>
-                <svg width="12" height="12" fill="none" viewBox="0 0 20 20"><path d="M7 8l3 3 3-3" stroke="#fff" strokeWidth="2" strokeLinecap="round"/></svg>
-              </button>
-              {walletDropdown && (
-                <div className="absolute right-0 mt-2 w-72 bg-[#1a2a3a] text-white rounded shadow-lg z-50 p-4 border border-[#22334a]">
-                  <div className="mb-2 text-xs text-gray-400">Connected</div>
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="font-mono bg-[#22334a] px-2 py-1 rounded text-xs flex items-center gap-1 max-w-[140px] overflow-hidden">
-                      {shortAddress(wallet)}
-                      <button
-                        className="text-gray-400 hover:text-white"
-                        onClick={() => navigator.clipboard.writeText(wallet)}
-                        title="Copy address"
-                      >
-                        <svg width="14" height="14" fill="none" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2" stroke="currentColor" strokeWidth="2"/><rect x="3" y="3" width="13" height="13" rx="2" fill="#fff" stroke="currentColor" strokeWidth="2"/></svg>
-                      </button>
-                      <a
-                        href={`https://explorer.sui.io/address/${wallet}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-gray-400 hover:text-white"
-                        title="View on Explorer"
-                      >
-                        <svg width="14" height="14" fill="none" viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><path d="M15 3h6v6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><path d="M10 14L21 3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                      </a>
-                    </span>
-                  </div>
-                  <button
-                    onClick={handleDisconnect}
-                    className="w-full mt-2 px-4 py-2 bg-sky-500 text-white rounded hover:bg-sky-600 text-sm font-medium transition"
-                  >
-                    Disconnect
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-        {/* Section Content */}
-        {activeTab === 'Dashboard' && (
-          <div className="bg-white rounded-xl shadow-sm p-6 flex flex-col items-center justify-center mb-8">
-            <div className="text-2xl font-bold text-[#0a2233] mb-2">Welcome to your Dashboard</div>
-            <div className="text-gray-500 text-base mb-4">Track your crowdfunding activity, manage your projects, and view your wallet all in one place.</div>
-            <div className="w-full h-64 bg-gray-100 rounded flex items-center justify-center">
-              <span className="text-gray-400">[Dashboard Overview Chart Placeholder]</span>
-            </div>
-          </div>
-        )}
-        {activeTab === 'My Projects' && (
-          <div>
-            <div className="flex gap-2 mb-6">
-              {['Active Projects', 'Drafts', 'Completed'].map(tab => (
-                <button
-                  key={tab}
-                  className={`px-5 py-2 rounded-full font-medium text-sm ${projectTab === tab ? 'bg-[#e6f2fa] text-[#0a2233]' : 'bg-white text-gray-500 border border-gray-200'}`}
-                  onClick={() => setProjectTab(tab)}
-                >
-                  {tab}
-                </button>
-              ))}
-            </div>
-            {projectTab === 'Active Projects' && (
-              <div className="bg-white rounded-xl p-8 mb-8 shadow-sm border">
-                <h2 className="text-2xl font-bold mb-1 text-[#0a2233]">Start a New Project</h2>
-                <p className="text-gray-500 mb-6">Fill out the form below to create a new crowdfunding project</p>
-                <form className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <label className="block font-semibold mb-1">Project Title</label>
-                      <input type="text" placeholder="Enter a catchy title for your project" className="w-full px-4 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-100" />
-                    </div>
-                    <div>
-                      <label className="block font-semibold mb-1">Category</label>
-                      <select className="w-full px-4 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-100">
-                        <option>Select a category</option>
-                        <option>Community</option>
-                        <option>Education</option>
-                        <option>Healthcare</option>
-                        <option>Technology</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block font-semibold mb-1">Project Description</label>
-                    <textarea placeholder="Describe your project and why people should support it" className="w-full px-4 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-100 min-h-[100px]" />
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <label className="block font-semibold mb-1">Funding Goal (USD)</label>
-                      <input type="number" placeholder="Enter amount" className="w-full px-4 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-100" />
-                    </div>
-                    <div>
-                      <label className="block font-semibold mb-1">Duration</label>
-                      <select className="w-full px-4 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-100">
-                        <option>Select duration</option>
-                        <option>7 days</option>
-                        <option>14 days</option>
-                        <option>30 days</option>
-                        <option>60 days</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block font-semibold mb-1">Project Image</label>
-                    <div className="border-2 border-dashed rounded-lg p-6 flex flex-col items-center justify-center text-gray-400">
-                      <svg width="40" height="40" fill="none" viewBox="0 0 24 24"><path d="M12 16v-4m0 0V8m0 4h4m-4 0H8" stroke="#cbd5e1" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><rect x="3" y="3" width="18" height="18" rx="2" stroke="#cbd5e1" strokeWidth="2"/></svg>
-                      <span className="mt-2">Drag and drop your image here, or click to browse</span>
-                      <button type="button" className="mt-2 px-4 py-2 bg-gray-100 rounded font-medium text-[#0a2233] border border-gray-200">Browse Files</button>
-                    </div>
-                  </div>
-                  <div className="flex justify-between mt-6">
-                    <button type="button" className="px-6 py-2 rounded bg-white border border-gray-300 text-[#0a2233] font-medium hover:bg-gray-50">Save as Draft</button>
-                    <button type="submit" className="px-6 py-2 rounded bg-[#0a2233] text-white font-medium hover:bg-[#18344a]">Create Project</button>
-                  </div>
-                </form>
-              </div>
-            )}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {myProjects.filter(p => projectTab === 'Active Projects').map((project) => (
-                <div key={project.id} className="bg-white rounded-xl overflow-hidden border shadow-sm flex flex-col">
-                  <div className="flex flex-col md:flex-row">
-                    <div className="relative w-full md:w-48 h-40 md:h-auto">
-                      <Image
-                        src={project.image || "/placeholder.svg"}
-                        alt={project.title}
-                        fill
-                        className="object-cover"
-                        priority
-                      />
-                    </div>
-                    <div className="flex-1 p-6 flex flex-col justify-between">
-                      <div>
-                        <div className="flex items-center gap-2 mb-2">
-                          <span className="px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium">Active</span>
-                        </div>
-                        <h3 className="text-lg font-bold mb-1 text-[#0a2233]">{project.title}</h3>
-                        <p className="text-sm text-gray-600 mb-3">{project.description}</p>
-                        <div className="flex items-center gap-4 text-xs text-gray-500 mb-2">
-                          <span className="flex items-center gap-1"><Heart className="w-4 h-4" /> 427 donors</span>
-                          <span className="flex items-center gap-1"><span className="bg-gray-100 text-[#0a2233] px-2 py-1 rounded font-mono">Technology</span></span>
-                          <span>Created: Apr 10, 2025</span>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-4 mt-2">
-                        <div className="flex-1">
-                          <div className="w-full h-2 bg-gray-200 rounded-full mb-1">
-                            <div className="h-2 bg-blue-500 rounded-full" style={{ width: `${project.progress}%` }}></div>
-                          </div>
-                          <div className="flex justify-between text-xs text-gray-500">
-                            <span>{project.progress}% funded</span>
-                            <span>Goal: ${project.goal}</span>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-1 text-xs text-gray-500">
-                          <Clock className="w-4 h-4" />
-                          <span>{project.daysLeft} days left</span>
-                        </div>
-                      </div>
-                      <div className="flex gap-2 mt-4">
-                        <button className="flex items-center gap-1 px-3 py-1 rounded bg-[#f1f5f9] text-[#0a2233] border border-gray-200 hover:bg-gray-100 text-xs"><svg width="16" height="16" fill="none" viewBox="0 0 24 24"><path d="M15 17h5l-1.405-1.405A2.032 2.032 0 0 1 18 14.158V11a6.002 6.002 0 0 0-4-5.659V4a2 2 0 1 0-4 0v1.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 1 1-6 0v-1m6 0H9" stroke="#0a2233" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg> View Details</button>
-                        <button className="flex items-center gap-1 px-3 py-1 rounded bg-[#f1f5f9] text-[#0a2233] border border-gray-200 hover:bg-gray-100 text-xs"><Edit2 className="w-4 h-4" /> Edit Project</button>
-                        <button className="flex items-center gap-1 px-3 py-1 rounded bg-[#f1f5f9] text-[#0a2233] border border-gray-200 hover:bg-gray-100 text-xs"><Share2 className="w-4 h-4" /> Share</button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-        {activeTab === 'Donations' && (
-          <div className="space-y-8">
-            {/* Contributions List */}
-            <div className="bg-white rounded-xl overflow-hidden border shadow-sm">
-              <div className="p-6">
-                <h3 className="text-xl font-bold mb-4 text-[#0a2233]">Your Contributions</h3>
-                <div className="space-y-4">
-                  {contributions.map((contribution) => (
-                    <div key={contribution.id} className="flex justify-between items-center p-4 bg-gray-50 rounded-lg">
-                      <div>
-                        <h4 className="font-medium">{contribution.title}</h4>
-                        <p className="text-sm text-gray-600">
-                          {new Date(contribution.date).toLocaleDateString()}
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <div className="font-bold">{contribution.amount} SUI</div>
-                        <Link href="#" className="text-sm text-[#0a2233] hover:underline">
-                          View Project
-                        </Link>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
+      <main className="flex-1 overflow-y-auto">
+        {/* Top Bar */}
+        <motion.div 
+          initial={{ y: -20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          className="sticky top-0 z-40 bg-white border-b border-gray-200"
+        >
+          <div className="flex items-center justify-between px-8 py-6">
+            <div>
+              <h1 className="text-3xl font-bold text-[#0a2233]">
+                {activeTab}
+              </h1>
+              <p className="text-gray-500 mt-1 text-lg">
+                {activeTab === 'Dashboard' && 'Track your impact and manage campaigns'}
+                {activeTab === 'My Projects' && 'Create and manage your crowdfunding projects'}
+                {activeTab === 'Donations' && 'View your contribution history'}
+                {activeTab === 'Activity' && 'Stay updated with recent activities'}
+                {activeTab === 'Analytics' && 'Analyze your campaign performance'}
+                {activeTab === 'Wallet' && 'Manage your crypto assets'}
+                {activeTab === 'Settings' && 'Customize your experience'}
+              </p>
             </div>
             
-            {/* NFT Receipts Gallery */}
-            <div className="mt-8">
-              <div className="text-sm text-gray-500 mb-2">
-                Each donation generates a unique NFT receipt on the Sui blockchain
-              </div>
-              <DonationNFTGallery />
-            </div>
-          </div>
-        )}
-        {activeTab === 'Activity' && (
-          <div className="bg-white rounded-xl p-6 shadow-sm">
-            <div className="font-bold text-lg mb-1">Recent Activity</div>
-            <div className="text-gray-500 text-sm mb-4">What's happening in your community</div>
-            <div className="w-full h-64 bg-gray-100 rounded flex items-center justify-center">
-              <span className="text-gray-400">[Activity Feed Placeholder]</span>
-            </div>
-          </div>
-        )}
-        {activeTab === 'Analytics' && (
-          <div>
-            <div className="bg-white rounded-xl p-6 shadow-sm">
-              <div className="font-bold text-lg mb-1">Analytics</div>
-              <div className="text-gray-500 text-sm mb-4">View your crowdfunding analytics and insights here.</div>
-              <div className="w-full h-64 bg-gray-100 rounded flex items-center justify-center">
-                <span className="text-gray-400">[Analytics Chart Placeholder]</span>
-              </div>
-            </div>
-          </div>
-        )}
-        {activeTab === 'Wallet' && (
-          <div>
-            <div className="bg-gradient-to-r from-[#0a2233] to-[#18344a] rounded-xl p-8 text-white mb-8">
-              <div className="flex justify-between items-center mb-4">
-                <div>
-                  <div className="text-lg font-bold">Connected Wallet</div>
-                  <div className="text-sm text-gray-200">Slush Wallet</div>
-                  <div className="mt-2 bg-[#112a3c] px-3 py-2 rounded font-mono text-xs block">{wallet || 'Not connected'}</div>
-                </div>
-                <div className="text-right">
-                  <div className="text-lg font-bold">SUI Balance</div>
-                  {/* TODO: Replace the placeholder below with real balance from Sui blockchain or wallet provider */}
-                  <div className="text-2xl">245.78 SUI</div>
-                  <div className="text-xs text-gray-200">≈ $1,228.90 USD</div>
-                </div>
-              </div>
-              <div className="flex gap-4 mt-4">
-                <button className="bg-white text-[#0a2233] px-4 py-2 rounded font-semibold">Send Funds</button>
-                <button className="bg-white text-[#0a2233] px-4 py-2 rounded font-semibold">Receive Funds</button>
-              </div>
-            </div>
-            <div className="bg-white rounded-xl p-6 shadow-sm mb-8">
-              <div className="font-bold text-lg mb-4">Connected Wallets</div>
-              <div className="flex flex-col gap-4">
-                <div className="flex items-center justify-between bg-gray-50 p-4 rounded">
-                  <div>
-                    <div className="font-semibold">Slush Wallet <span className="ml-2 text-xs bg-green-100 text-green-700 px-2 py-1 rounded">Primary</span></div>
-                    <div className="font-mono text-xs text-gray-500">{wallet || 'Not connected'}</div>
+            <div className="flex items-center gap-4">
+              {/* Modern Search Bar */}
+              <motion.div 
+                whileHover={{ scale: 1.02 }}
+                className="relative group"
+              >
+                <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400 group-hover:text-gray-600 transition-colors" />
+                <input 
+                  type="text" 
+                  placeholder="Search campaigns..." 
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-12 pr-4 py-2.5 w-80 rounded-lg bg-gray-50 border border-gray-200 hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#4ECDC4] focus:bg-white transition-all duration-300" 
+                />
+              </motion.div>
+              
+              {/* Notification Bell */}
+              <motion.button 
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.95 }}
+                className="relative p-2 rounded-lg hover:bg-gray-50 transition-all duration-300"
+              >
+                <Bell className="h-6 w-6 text-gray-600" />
+                {notifications > 0 && (
+                  <motion.span 
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    className="absolute -top-1 -right-1 w-5 h-5 bg-[#FF6B6B] rounded-full flex items-center justify-center shadow-lg"
+                  >
+                    <span className="text-xs text-white font-bold leading-none">{notifications}</span>
+                  </motion.span>
+                )}
+              </motion.button>
+              
+              {/* Modern Wallet Dropdown */}
+              <div className="relative">
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-[#1e3a4c] text-white hover:bg-[#2a4a5c] transition-all duration-300"
+                  onClick={() => setWalletDropdown(!walletDropdown)}
+                >
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#4ECDC4] to-[#44A8D8] flex items-center justify-center">
+                    <WalletIcon className="h-4 w-4 text-white" />
                   </div>
-                  <div className="text-right">
-                    <div className="font-bold">245.78 SUI</div>
-                    <div className="text-xs text-gray-500">$1,228.90 USD</div>
+                  <span className="font-medium">{shortAddress(currentAccount?.address || '')}</span>
+                  <ChevronDown className={`h-4 w-4 transition-transform ${walletDropdown ? 'rotate-180' : ''}`} />
+                </motion.button>
+                
+                <AnimatePresence>
+                  {walletDropdown && (
+                    <motion.div 
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      className="absolute right-0 mt-2 w-80 bg-white rounded-2xl shadow-2xl z-50 p-6 border border-gray-100"
+                    >
+                      <div className="flex items-center justify-between mb-4">
+                        <span className="text-sm font-medium text-gray-500">Connected Wallet</span>
+                        <span className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full font-medium">Active</span>
+                      </div>
+                      
+                      <div className="bg-gray-50 rounded-xl p-4 mb-4">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="font-mono text-sm text-gray-700">{shortAddress(currentAccount?.address || '')}</span>
+                          <div className="flex gap-2">
+                            <motion.button
+                              whileHover={{ scale: 1.1 }}
+                              whileTap={{ scale: 0.95 }}
+                              onClick={() => navigator.clipboard.writeText(currentAccount?.address || '')}
+                              className="p-1.5 hover:bg-gray-200 rounded-lg transition-colors"
+                            >
+                              <Copy className="h-4 w-4 text-gray-600" />
+                            </motion.button>
+                            <motion.button
+                              whileHover={{ scale: 1.1 }}
+                              whileTap={{ scale: 0.95 }}
+                              onClick={() => window.open(`https://explorer.sui.io/address/${currentAccount?.address}`, '_blank')}
+                              className="p-1.5 hover:bg-gray-200 rounded-lg transition-colors"
+                            >
+                              <ExternalLink className="h-4 w-4 text-gray-600" />
+                            </motion.button>
+                          </div>
+                        </div>
+                        <div className="mt-3">
+                          <p className="text-xs text-gray-500 mb-1">Balance</p>
+                          <p className="text-2xl font-bold text-gray-900">245.78 <span className="text-sm font-normal">SUI</span></p>
+                          <p className="text-sm text-gray-500">≈ $1,228.90 USD</p>
+                        </div>
+                      </div>
+                      
+                      <div className="mt-4">
+                        <WalletConnectButton variant="minimal" />
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Content Area */}
+        <div className="p-8">
+          <AnimatePresence mode="wait">
+            {activeTab === 'Dashboard' && (
+              <motion.div
+                key="dashboard"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                transition={{ duration: 0.3 }}
+                className="space-y-8"
+              >
+                {/* Welcome Banner */}
+                <motion.div 
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="relative overflow-hidden bg-gradient-to-br from-[#0a2233] via-[#1e3a4c] to-[#2a4a5c] rounded-3xl p-8 text-white shadow-2xl"
+                >
+                  <div className="absolute inset-0 bg-gradient-to-r from-black/10 via-transparent to-black/10"></div>
+                  <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-bl from-[#4ECDC4]/20 to-transparent rounded-full blur-3xl"></div>
+                  <div className="relative z-10 max-w-3xl">
+                    <motion.div
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: 0.2 }}
+                    >
+                      <h2 className="text-4xl font-bold mb-3 flex items-center gap-3">
+                        Welcome back! 
+                        <motion.span
+                          animate={{ rotate: [0, 20, 0] }}
+                          transition={{ duration: 2, repeat: Infinity }}
+                        >
+                          👋
+                        </motion.span>
+                      </h2>
+                      <p className="text-lg text-gray-200 mb-6">
+                        Your campaigns have raised <span className="font-bold text-white">$24,500</span> this month. Keep up the amazing work making a difference in the world!
+                      </p>
+                    </motion.div>
+                    <motion.div
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.4 }}
+                      className="flex gap-4"
+                    >
+                      <Link href="/create">
+                        <motion.button 
+                          whileHover={{ scale: 1.05, y: -2 }}
+                          whileTap={{ scale: 0.95 }}
+                          className="bg-white text-[#0a2233] px-6 py-3 rounded-lg font-semibold hover:bg-gray-50 transition-all duration-300 flex items-center gap-2"
+                        >
+                          <Rocket className="h-5 w-5" />
+                          Create New Campaign
+                        </motion.button>
+                      </Link>
+                      <motion.button 
+                        whileHover={{ scale: 1.05, y: -2 }}
+                        whileTap={{ scale: 0.95 }}
+                        className="bg-white/20 backdrop-blur-sm text-white px-6 py-3 rounded-lg font-semibold hover:bg-white/30 transition-all duration-300 border border-white/30"
+                      >
+                        View Analytics
+                      </motion.button>
+                    </motion.div>
                   </div>
+                </motion.div>
+                
+                {/* Modern Stats Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+                  {[
+                    { title: "Total Raised", value: "$24,500", subtitle: "sgUSD", icon: <TrendingUp className="h-5 w-5" />, trend: { value: 12, isPositive: true }, color: "blue" },
+                    { title: "Total Backers", value: "1,247", subtitle: "Supporters", icon: <Users className="h-5 w-5" />, trend: { value: 8, isPositive: true }, color: "blue" },
+                    { title: "Active Campaigns", value: "5", subtitle: "2 ending soon", icon: <Target className="h-5 w-5" />, color: "blue" },
+                    { title: "Success Rate", value: "85%", subtitle: "12 days avg", icon: <Calendar className="h-5 w-5" />, color: "blue" }
+                  ].map((stat, index) => (
+                    <motion.div
+                      key={stat.title}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.1 * index }}
+                    >
+                      <StatCard {...stat} />
+                    </motion.div>
+                  ))}
                 </div>
-                {/* To fetch the real SUI balance, use the Sui blockchain API or your wallet provider here. */}
-              </div>
-            </div>
-            <div className="bg-white rounded-xl p-6 shadow-sm mb-8">
-              <div className="flex justify-between items-center mb-4">
+                
+                {/* Recent Activity */}
+                <ModernCard>
+                  <ModernCardHeader>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <Activity className="h-5 w-5 text-gray-600" />
+                        <div>
+                          <ModernCardTitle>Recent Activity</ModernCardTitle>
+                          <p className="text-sm text-gray-500">Latest updates from your campaigns</p>
+                        </div>
+                      </div>
+                      <motion.button
+                        whileHover={{ scale: 1.05 }}
+                        className="text-sm text-[#0a2233] hover:text-[#18344a] font-medium"
+                      >
+                        View All →
+                      </motion.button>
+                    </div>
+                  </ModernCardHeader>
+                  <ModernCardContent>
+                    <div className="space-y-4">
+                      {[
+                        { action: "New donation", project: "Healthcare Initiative", amount: "$250", time: "2 hours ago", icon: <Heart className="h-4 w-4 text-gray-500" /> },
+                        { action: "Campaign milestone", project: "Education Program", amount: "50% funded", time: "5 hours ago", icon: <Target className="h-4 w-4" /> },
+                        { action: "New backer", project: "Healthcare Initiative", amount: "$100", time: "1 day ago", icon: <Users className="h-4 w-4" /> }
+                      ].map((activity, index) => (
+                        <motion.div
+                          key={index}
+                          initial={{ opacity: 0, x: -20 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: 0.1 * index }}
+                          className="flex items-center justify-between p-5 bg-gradient-to-r from-gray-50 to-gray-100/50 rounded-xl hover:from-gray-100 hover:to-gray-50 transition-all duration-300 cursor-pointer border border-gray-100 hover:border-gray-200 hover:shadow-md"
+                        >
+                          <div className="flex items-center gap-4">
+                            <div className="p-3 bg-white rounded-xl text-gray-600 shadow-sm border border-gray-100">
+                              {activity.icon}
+                            </div>
+                            <div>
+                              <p className="font-medium text-gray-900">{activity.action}</p>
+                              <p className="text-sm text-gray-500">{activity.project}</p>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <p className="font-semibold text-gray-900">{activity.amount}</p>
+                            <p className="text-xs text-gray-500">{activity.time}</p>
+                          </div>
+                        </motion.div>
+                      ))}
+                    </div>
+                  </ModernCardContent>
+                </ModernCard>
+              </motion.div>
+            )}
+            
+            {activeTab === 'My Projects' && (
+              <motion.div
+                key="projects"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                transition={{ duration: 0.3 }}
+              >
+                <div className="text-center p-8">
+                  <h2 className="text-2xl font-bold text-gray-900 mb-4">My Projects</h2>
+                  <p className="text-gray-600">Project management features coming soon!</p>
+                </div>
+              </motion.div>
+            )}
+            
+            {activeTab === 'Donations' && (
+              <motion.div
+                key="donations"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                transition={{ duration: 0.3 }}
+                className="space-y-8"
+              >
+                {/* Donation Stats */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <StatCard
+                    title="Total Donated"
+                    value="$1,500"
+                    subtitle="sgUSD"
+                    icon={<DollarSign className="h-5 w-5" />}
+                    color="blue"
+                  />
+                  <StatCard
+                    title="Projects Supported"
+                    value="3"
+                    subtitle="Active campaigns"
+                    icon={<Heart className="h-5 w-5" />}
+                    color="blue"
+                  />
+                  <StatCard
+                    title="NFT Receipts"
+                    value="3"
+                    subtitle="Donation proofs"
+                    icon={<Sparkles className="h-5 w-5" />}
+                    color="blue"
+                  />
+                </div>
+                
+                {/* Contributions List */}
+                <ModernCard>
+                  <ModernCardHeader>
+                    <ModernCardTitle>Your Contributions</ModernCardTitle>
+                    <p className="text-sm text-gray-500 mt-2">Track all your donations and their impact</p>
+                  </ModernCardHeader>
+                  <ModernCardContent>
+                    <div className="space-y-4">
+                      {contributions.map((contribution, index) => (
+                        <motion.div
+                          key={contribution.id}
+                          initial={{ opacity: 0, x: -20 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: index * 0.1 }}
+                          className="flex items-center justify-between p-6 bg-gradient-to-r from-gray-50 to-gray-100 rounded-2xl hover:shadow-lg transition-all duration-300 cursor-pointer group"
+                        >
+                          <div className="flex items-center gap-4">
+                            <div className="w-12 h-12 bg-gradient-to-br from-[#4ECDC4] to-[#44A8D8] rounded-full flex items-center justify-center text-white font-bold">
+                              ${contribution.amount.slice(0, 1)}
+                            </div>
+                            <div>
+                              <h4 className="font-semibold text-lg text-gray-900">{contribution.title}</h4>
+                              <p className="text-sm text-gray-600">
+                                {new Date(contribution.date).toLocaleDateString('en-US', { 
+                                  year: 'numeric', 
+                                  month: 'long', 
+                                  day: 'numeric' 
+                                })}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-4">
+                            <div className="text-right">
+                              <div className="text-2xl font-bold text-gray-900">${contribution.amount}</div>
+                              <div className="text-sm text-gray-500">sgUSD</div>
+                            </div>
+                            <motion.div
+                              whileHover={{ x: 5 }}
+                              className="opacity-0 group-hover:opacity-100 transition-opacity"
+                            >
+                              <ArrowRight className="h-5 w-5 text-gray-400" />
+                            </motion.div>
+                          </div>
+                        </motion.div>
+                      ))}
+                    </div>
+                  </ModernCardContent>
+                </ModernCard>
+                
+                {/* NFT Gallery */}
                 <div>
-                  <div className="font-bold text-lg">Donation NFT Receipts</div>
-                  <div className="text-sm text-gray-500">Your donation receipts are stored as NFTs in your wallet</div>
+                  <h3 className="text-2xl font-bold text-gray-900 mb-2">NFT Donation Receipts</h3>
+                  <p className="text-gray-600 mb-6">Each donation generates a unique NFT receipt on the Sui blockchain</p>
+                  <DonationNFTGallery />
                 </div>
-              </div>
-              <DonationNFTGallery />
-            </div>
-          </div>
-        )}
-        {activeTab === 'Settings' && (
-          <div>
-            <div className="bg-white rounded-xl p-6 shadow-sm">
-              <div className="font-bold text-lg mb-1">Settings</div>
-              <div className="text-gray-500 text-sm mb-4">Manage your account settings and preferences here.</div>
-              <div className="w-full h-64 bg-gray-100 rounded flex items-center justify-center">
-                <span className="text-gray-400">[Settings Placeholder]</span>
-              </div>
-            </div>
-          </div>
-        )}
+              </motion.div>
+            )}
+            
+            {/* Other tabs placeholder */}
+            {['Activity', 'Analytics', 'Wallet', 'Settings'].includes(activeTab) && (
+              <motion.div
+                key={activeTab.toLowerCase()}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                transition={{ duration: 0.3 }}
+                className="text-center p-8"
+              >
+                <h2 className="text-2xl font-bold text-gray-900 mb-4">{activeTab}</h2>
+                <p className="text-gray-600">{activeTab} features coming soon!</p>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
       </main>
     </div>
   )

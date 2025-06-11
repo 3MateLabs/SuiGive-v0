@@ -1,6 +1,6 @@
 #[test_only]
 module suigive::donation_receipt_tests {
-    use sui::test_scenario::{Self as ts, Scenario};
+    use sui::test_scenario::{Self as ts};
     use sui::test_utils::assert_eq;
     use std::string::{utf8};
     use sui::url;

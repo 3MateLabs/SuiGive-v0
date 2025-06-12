@@ -5,7 +5,7 @@ module suigive::enhanced_tests {
     use sui::sui::SUI;
     use sui::test_utils::assert_eq;
     use std::string::{utf8};
-    use suigive::crowdfunding::{Self, CampaignManager, Campaign, CampaignOwnerCap, BeneficialParty};
+    use suigive::crowdfunding_old::{Self as crowdfunding, CampaignManager, Campaign, CampaignOwnerCap, BeneficialParty};
     use suigive::sg_sui_token::{Self, SgSuiTreasury, SgSuiMinterCap};
     
     // Test addresses

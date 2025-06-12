@@ -50,11 +50,18 @@ export function useTransactionExecution(): TransactionExecutionHook {
       // We'll use the default execution flow provided by dapp-kit
       // which is more reliable than our custom implementation
       return await new Promise((resolve, reject) => {
+        console.log('Calling signAndExecute...');
         signAndExecute(
           { transaction },
           {
-            onSuccess: (result) => resolve(result),
-            onError: (error) => reject(error)
+            onSuccess: (result) => {
+              console.log('Transaction successful:', result);
+              resolve(result);
+            },
+            onError: (error) => {
+              console.error('Transaction failed:', error);
+              reject(error);
+            }
           }
         );
       });
@@ -150,9 +157,8 @@ export function useTransactionExecution(): TransactionExecutionHook {
       });
     } else {
       // For simple campaigns without beneficial parties, create empty vector
-      // We need to specify the type for the empty vector
+      // Using makeMoveVec with empty elements array
       const emptyBeneficialPartiesVector = tx.makeMoveVec({
-        type: `${SUI_CONFIG.PACKAGE_ID}::crowdfunding::BeneficialParty`,
         elements: []
       });
       
@@ -179,12 +185,19 @@ export function useTransactionExecution(): TransactionExecutionHook {
     }
     
     try {
+      // Log transaction details before execution
+      console.log('Transaction ready to execute');
+      console.log('Package ID:', SUI_CONFIG.PACKAGE_ID);
+      console.log('Campaign Manager ID:', SUI_CONFIG.CAMPAIGN_MANAGER_ID);
+      
       // Execute the transaction using our helper function
       const result = await executeTransaction(tx);
       console.log('Campaign created successfully:', result);
       return result as TransactionOutput;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating campaign:', error);
+      console.error('Error details:', error.message);
+      console.error('Error stack:', error.stack);
       throw error;
     }
   };

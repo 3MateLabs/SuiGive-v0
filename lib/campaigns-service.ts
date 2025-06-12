@@ -45,7 +45,6 @@ export async function createCampaign(
     
     // Create empty beneficial parties vector since the contract now requires it
     const emptyBeneficialPartiesVector = tx.makeMoveVec({
-      type: `${SUI_CONFIG.PACKAGE_ID}::crowdfunding::BeneficialParty`,
       elements: []
     });
     

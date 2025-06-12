@@ -120,7 +120,7 @@ export default function ProfileAnalytics({
         cornerRadius: 12,
         titleFont: {
           size: 14,
-          weight: '600',
+          weight: 'bold' as const,
         },
         bodyFont: {
           size: 13,
@@ -170,7 +170,7 @@ export default function ProfileAnalytics({
           color: '#475569',
           font: {
             size: 13,
-            weight: '500',
+            weight: 'normal' as const,
           },
           usePointStyle: true,
           pointStyle: 'circle',
@@ -182,7 +182,7 @@ export default function ProfileAnalytics({
         cornerRadius: 12,
         titleFont: {
           size: 14,
-          weight: '600',
+          weight: 'bold' as const,
         },
         bodyFont: {
           size: 13,

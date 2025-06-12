@@ -324,7 +324,7 @@ export default function DashboardPage() {
                       </div>
                       
                       <div className="mt-4">
-                        <WalletConnectButton variant="minimal" />
+                        <WalletConnectButton variant="compact" />
                       </div>
                     </motion.div>
                   )}
@@ -403,10 +403,10 @@ export default function DashboardPage() {
                 {/* Modern Stats Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
                   {[
-                    { title: "Total Raised", value: "$24,500", subtitle: "sgUSD", icon: <TrendingUp className="h-5 w-5" />, trend: { value: 12, isPositive: true }, color: "blue" },
-                    { title: "Total Backers", value: "1,247", subtitle: "Supporters", icon: <Users className="h-5 w-5" />, trend: { value: 8, isPositive: true }, color: "blue" },
-                    { title: "Active Campaigns", value: "5", subtitle: "2 ending soon", icon: <Target className="h-5 w-5" />, color: "blue" },
-                    { title: "Success Rate", value: "85%", subtitle: "12 days avg", icon: <Calendar className="h-5 w-5" />, color: "blue" }
+                    { title: "Total Raised", value: "$24,500", subtitle: "sgUSD", icon: <TrendingUp className="h-5 w-5" />, trend: { value: 12, isPositive: true }, color: "blue" as const },
+                    { title: "Total Backers", value: "1,247", subtitle: "Supporters", icon: <Users className="h-5 w-5" />, trend: { value: 8, isPositive: true }, color: "green" as const },
+                    { title: "Active Campaigns", value: "5", subtitle: "2 ending soon", icon: <Target className="h-5 w-5" />, color: "purple" as const },
+                    { title: "Success Rate", value: "85%", subtitle: "12 days avg", icon: <Calendar className="h-5 w-5" />, color: "orange" as const }
                   ].map((stat, index) => (
                     <motion.div
                       key={stat.title}

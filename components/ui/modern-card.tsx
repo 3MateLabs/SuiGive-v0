@@ -4,7 +4,7 @@ import * as React from "react";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 
-interface ModernCardProps extends React.HTMLAttributes<HTMLDivElement> {
+interface ModernCardProps extends Omit<React.HTMLAttributes<HTMLDivElement>, 'onDrag' | 'onDragStart' | 'onDragEnd' | 'onAnimationStart' | 'onAnimationEnd' | 'onAnimationIteration'> {
   hover?: boolean;
   glow?: boolean;
   gradient?: boolean;

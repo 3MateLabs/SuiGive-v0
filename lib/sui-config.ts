@@ -1,21 +1,21 @@
 // Sui contract configuration for SuiGive crowdfunding platform
 export const SUI_CONFIG = {
   // Package ID from the deployed smart contract
-  PACKAGE_ID: '0x69ef98c5a266ac2c109e764379b1ab2ea3a786c2a543277c2bef7a619a2308ff',
+  PACKAGE_ID: '0x4bee3ad0e94bae438ae11f3dbe6c6977e1f35ed0cecdaac947ab8e7462a1d20e',
   // Campaign Manager object ID that manages all campaigns - replaces Registry
-  CAMPAIGN_MANAGER_ID: '0xc6bd218faaccd0195918a301677c5a1066ac6316e0367cb397ee947546e17c48',
+  CAMPAIGN_MANAGER_ID: '0xd8d38b02bd966b95750e61374c71fe083fefb495c0edf782b28ce27ca74c1040',
   // DEPRECATED: Registry ID (kept for backward compatibility)
-  REGISTRY_ID: '0xc6bd218faaccd0195918a301677c5a1066ac6316e0367cb397ee947546e17c48',
+  REGISTRY_ID: '0xd8d38b02bd966b95750e61374c71fe083fefb495c0edf782b28ce27ca74c1040',
   // SgSuiTreasury ID for the closed-loop token system
-  TREASURY_ID: '0x3fa5854fc02dae8bb936c79630b823587d3b4afea482722daf3810025db00775',
+  TREASURY_ID: '0x0271c83399576b74456a124b9ed11ba28e06ae83f3c4886acf7d67197c490b2b',
   // Treasury Cap ID for the donation token (SG_USD)
-  TREASURY_CAP_ID: '0xb5f25a6e28485ed6b62d3ce39b56ea353b352dcfd51d6316f53ba5a5e599f6fe',
+  TREASURY_CAP_ID: '0xccda88de1ad742ba2cec1303585c28789cb36f78b018bc48fdd8344dca9aa853',
   // Campaign ID for the Clean Water Project
   CAMPAIGN_ID: '', // Will be populated after creating a new campaign
   // sgUSD token configuration
-  SGUSD_MANAGER_ID: '0x9955350bfd09bf4658dd7ad3c90c40009b9fc37fe5baf30de1e68ec310e0f60c',
+  SGUSD_MANAGER_ID: '0xdb8a5924efe01f4ef5cc83faca83cf78045bbb00c28b05d1e8018f0666596c2d',
   // SgSuiMinterCap ID for minting SG_SUI tokens
-  SGSUI_MINTER_CAP_ID: '0x77be4867935b8d54b905c15a5123dc4e0531a04779cb4890be92e8240f45a6df',
+  SGSUI_MINTER_CAP_ID: '0xb76bbb45ac9669811077cafe6d9f1e768561998f235c27b4e2f84f27f36a931c',
   // Admin addresses
   PUBLISHER_ADDRESS: '0xf1df42d3b603f6d22fc276c25dd1eee4c3f767d7a7e7ec36bf9c3d416a74e228',
   BENEFICIARY_ADDRESS: '0x4822bfc9c86d1a77daf48b0bdf8f012ae9b7f8f01b4195dc0f3fd4fb838525bd',

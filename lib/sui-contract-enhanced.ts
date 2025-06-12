@@ -78,12 +78,13 @@ export async function createCampaignEnhanced(
   const creationFeeCoin = tx.splitCoins(tx.gas, [0]);
 
   // Call create_campaign function
-  const targetFunction = tokenType === 'SUI' 
-    ? `${SUI_CONFIG.PACKAGE_ID}::crowdfunding::create_campaign<0x2::sui::SUI>`
-    : `${SUI_CONFIG.PACKAGE_ID}::crowdfunding::create_campaign<${SUI_CONFIG.PACKAGE_ID}::sg_usd::SG_USD>`;
+  const typeArg = tokenType === 'SUI' 
+    ? '0x2::sui::SUI'
+    : `${SUI_CONFIG.PACKAGE_ID}::sg_usd::SG_USD`;
 
   tx.moveCall({
-    target: targetFunction,
+    target: `${SUI_CONFIG.PACKAGE_ID}::crowdfunding::create_campaign`,
+    typeArguments: [typeArg],
     arguments: [
       campaignManager,
       tx.pure.string(name),
@@ -122,15 +123,18 @@ export async function donateEnhanced(
   if (tokenType === 'SUI') {
     // Split SUI from gas coin
     donationCoin = tx.splitCoins(tx.gas, [amount]);
-    targetFunction = `${SUI_CONFIG.PACKAGE_ID}::crowdfunding::donate<0x2::sui::SUI>`;
+    targetFunction = `${SUI_CONFIG.PACKAGE_ID}::crowdfunding::donate`;
   } else {
     // For sgUSD, we need to get the coin from user's balance
     // This would need to be handled differently in practice
     throw new Error('sgUSD donations not yet implemented in this helper');
   }
   
+  const typeArg = tokenType === 'SUI' ? '0x2::sui::SUI' : `${SUI_CONFIG.PACKAGE_ID}::sg_usd::SG_USD`;
+  
   tx.moveCall({
     target: targetFunction,
+    typeArguments: [typeArg],
     arguments: [
       campaign,
       donationCoin,
@@ -157,12 +161,13 @@ export async function withdrawForParty(
   const campaign = tx.object(campaignId);
   const ownerCap = tx.object(ownerCapId);
   
-  const targetFunction = tokenType === 'SUI' 
-    ? `${SUI_CONFIG.PACKAGE_ID}::crowdfunding::withdraw_for_party<0x2::sui::SUI>`
-    : `${SUI_CONFIG.PACKAGE_ID}::crowdfunding::withdraw_for_party<${SUI_CONFIG.PACKAGE_ID}::sg_usd::SG_USD>`;
+  const typeArg = tokenType === 'SUI' 
+    ? '0x2::sui::SUI'
+    : `${SUI_CONFIG.PACKAGE_ID}::sg_usd::SG_USD`;
   
   tx.moveCall({
-    target: targetFunction,
+    target: `${SUI_CONFIG.PACKAGE_ID}::crowdfunding::withdraw_for_party`,
+    typeArguments: [typeArg],
     arguments: [
       campaign,
       ownerCap,
@@ -187,12 +192,13 @@ export async function withdrawRemaining(
   const campaign = tx.object(campaignId);
   const ownerCap = tx.object(ownerCapId);
   
-  const targetFunction = tokenType === 'SUI' 
-    ? `${SUI_CONFIG.PACKAGE_ID}::crowdfunding::withdraw_remaining<0x2::sui::SUI>`
-    : `${SUI_CONFIG.PACKAGE_ID}::crowdfunding::withdraw_remaining<${SUI_CONFIG.PACKAGE_ID}::sg_usd::SG_USD>`;
+  const typeArg = tokenType === 'SUI' 
+    ? '0x2::sui::SUI'
+    : `${SUI_CONFIG.PACKAGE_ID}::sg_usd::SG_USD`;
   
   tx.moveCall({
-    target: targetFunction,
+    target: `${SUI_CONFIG.PACKAGE_ID}::crowdfunding::withdraw_remaining`,
+    typeArguments: [typeArg],
     arguments: [
       campaign,
       ownerCap,

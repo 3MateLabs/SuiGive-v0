@@ -59,7 +59,8 @@ export async function createCampaign(
 
   // Always use create_campaign with beneficial parties (empty vector if none provided)
   tx.moveCall({
-    target: `${SUI_CONFIG.PACKAGE_ID}::crowdfunding::create_campaign<0x2::sui::SUI>`,
+    target: `${SUI_CONFIG.PACKAGE_ID}::crowdfunding::create_campaign`,
+    typeArguments: ['0x2::sui::SUI'],
     arguments: [
       campaignManager,
       tx.pure.string(name),
@@ -94,7 +95,8 @@ export async function donate(
   const [coin] = tx.splitCoins(tx.gas, [tx.pure.u64(amount)]);
   
   tx.moveCall({
-    target: `${SUI_CONFIG.PACKAGE_ID}::crowdfunding::donate<0x2::sui::SUI>`,
+    target: `${SUI_CONFIG.PACKAGE_ID}::crowdfunding::donate`,
+    typeArguments: ['0x2::sui::SUI'],
     arguments: [
       campaign,
       coin,

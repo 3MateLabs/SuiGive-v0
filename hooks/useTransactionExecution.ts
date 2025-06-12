@@ -134,7 +134,8 @@ export function useTransactionExecution(): TransactionExecutionHook {
       });
 
       tx.moveCall({
-        target: `${SUI_CONFIG.PACKAGE_ID}::crowdfunding::create_campaign<0x2::sui::SUI>`,
+        target: `${SUI_CONFIG.PACKAGE_ID}::crowdfunding::create_campaign`,
+        typeArguments: ['0x2::sui::SUI'],
         arguments: [
           campaignManager,
           tx.pure.string(name),
@@ -155,8 +156,14 @@ export function useTransactionExecution(): TransactionExecutionHook {
         elements: []
       });
       
+      // Log the target for debugging
+      const target = `${SUI_CONFIG.PACKAGE_ID}::crowdfunding::create_campaign`;
+      console.log('Move call target:', target);
+      console.log('Type arguments:', ['0x2::sui::SUI']);
+      
       tx.moveCall({
-        target: `${SUI_CONFIG.PACKAGE_ID}::crowdfunding::create_campaign<0x2::sui::SUI>`,
+        target: target,
+        typeArguments: ['0x2::sui::SUI'],
         arguments: [
           campaignManager,
           tx.pure.string(name),
@@ -204,7 +211,8 @@ export function useTransactionExecution(): TransactionExecutionHook {
     
     // Add the move call to donate
     tx.moveCall({
-      target: `${SUI_CONFIG.PACKAGE_ID}::crowdfunding::donate<0x2::sui::SUI>`,
+      target: `${SUI_CONFIG.PACKAGE_ID}::crowdfunding::donate`,
+      typeArguments: ['0x2::sui::SUI'],
       arguments: [
         campaign,
         coin,
@@ -243,7 +251,8 @@ export function useTransactionExecution(): TransactionExecutionHook {
     
     // Add the move call to withdraw funds
     tx.moveCall({
-      target: `${SUI_CONFIG.PACKAGE_ID}::crowdfunding::withdraw_remaining<0x2::sui::SUI>`,
+      target: `${SUI_CONFIG.PACKAGE_ID}::crowdfunding::withdraw_remaining`,
+      typeArguments: ['0x2::sui::SUI'],
       arguments: [
         campaign,
         capability,
@@ -302,7 +311,8 @@ export function useTransactionExecution(): TransactionExecutionHook {
       
       // Add the move call to donate with sgUSD using only the split portion
       tx.moveCall({
-        target: `${SUI_CONFIG.PACKAGE_ID}::crowdfunding::donate<${SUI_CONFIG.PACKAGE_ID}::sg_usd::SG_USD>`,
+        target: `${SUI_CONFIG.PACKAGE_ID}::crowdfunding::donate`,
+        typeArguments: [`${SUI_CONFIG.PACKAGE_ID}::sg_usd::SG_USD`],
         arguments: [
           campaign,
           splitCoin,  // Use the split coin with the exact amount

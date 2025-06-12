@@ -87,6 +87,12 @@ export async function createCampaign(
     // Create zero SUI coin for creation fee (if no fee is set)
     const creationFeeCoin = tx.splitCoins(tx.gas, [0]);
     
+    // Create empty beneficial parties vector since the contract now requires it
+    const emptyBeneficialPartiesVector = tx.makeMoveVec({
+      type: `${SUI_CONFIG.PACKAGE_ID}::crowdfunding::BeneficialParty`,
+      elements: []
+    });
+    
     tx.moveCall({
       target: `${SUI_CONFIG.PACKAGE_ID}::crowdfunding::create_campaign<0x2::sui::SUI>`,
       arguments: [
@@ -97,6 +103,7 @@ export async function createCampaign(
         tx.pure.string(category),
         tx.pure.u64(goalAmount),
         tx.pure.u64(deadline),
+        emptyBeneficialPartiesVector,
         creationFeeCoin,
       ],
     });

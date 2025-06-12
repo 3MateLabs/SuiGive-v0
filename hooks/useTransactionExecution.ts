@@ -149,7 +149,9 @@ export function useTransactionExecution(): TransactionExecutionHook {
       });
     } else {
       // For simple campaigns without beneficial parties, create empty vector
+      // We need to specify the type for the empty vector
       const emptyBeneficialPartiesVector = tx.makeMoveVec({
+        type: `${SUI_CONFIG.PACKAGE_ID}::crowdfunding::BeneficialParty`,
         elements: []
       });
       

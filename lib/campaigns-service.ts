@@ -43,6 +43,12 @@ export async function createCampaign(
     // Get the registry object
     const campaignManager = tx.object(SUI_CONFIG.CAMPAIGN_MANAGER_ID);
     
+    // Create empty beneficial parties vector since the contract now requires it
+    const emptyBeneficialPartiesVector = tx.makeMoveVec({
+      type: `${SUI_CONFIG.PACKAGE_ID}::crowdfunding::BeneficialParty`,
+      elements: []
+    });
+    
     tx.moveCall({
       target: `${SUI_CONFIG.PACKAGE_ID}::crowdfunding::create_campaign`,
       typeArguments: ['0x2::sui::SUI'],
@@ -54,6 +60,7 @@ export async function createCampaign(
         tx.pure.string(category),
         tx.pure.u64(goalAmount),
         tx.pure.u64(deadline),
+        emptyBeneficialPartiesVector,
         tx.splitCoins(tx.gas, [0]), // creation fee coin
       ],
     });

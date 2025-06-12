@@ -34,6 +34,14 @@ export default function CreateCrowdfundPage() {
   const [duration, setDuration] = useState("")
   const [goalAmount, setGoalAmount] = useState("")
   const [manualImageUrl, setManualImageUrl] = useState("")
+  const [beneficialParties, setBeneficialParties] = useState<Array<{
+    receiver: string;
+    notes: string;
+    percentage: string;
+    maximum_amount: string;
+    minimum_amount: string;
+  }>>([])
+  const [showBeneficialParties, setShowBeneficialParties] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -93,6 +101,24 @@ export default function CreateCrowdfundPage() {
       // Convert goal amount to MIST (1 SUI = 10^9 MIST)
       const goalAmountMist = BigInt(parseFloat(goalAmount) * 1_000_000_000)
       
+      // Prepare beneficial parties data
+      const processedBeneficialParties = beneficialParties
+        .filter(party => party.receiver && party.percentage) // Only include valid entries
+        .map(party => ({
+          receiver: party.receiver,
+          notes: party.notes || "",
+          percentage: parseFloat(party.percentage),
+          maximum_amount: party.maximum_amount ? parseFloat(party.maximum_amount) * 1_000_000_000 : undefined,
+          minimum_amount: party.minimum_amount ? parseFloat(party.minimum_amount) * 1_000_000_000 : undefined
+        }));
+      
+      // Validate total percentage
+      const totalPercentage = processedBeneficialParties.reduce((sum, party) => sum + party.percentage, 0);
+      if (totalPercentage > 100) {
+        toast.error("Total beneficial party percentage cannot exceed 100%");
+        return;
+      }
+      
       toast.loading("Creating your campaign...", { id: "create-campaign" })
       
       const result = await createCampaign(
@@ -101,7 +127,8 @@ export default function CreateCrowdfundPage() {
         finalImageUrl,
         Number(goalAmountMist),
         deadlineTimestamp,
-        selectedCategory
+        selectedCategory,
+        processedBeneficialParties
       )
       
       toast.success("Campaign created successfully!", { id: "create-campaign" })
@@ -206,7 +233,7 @@ export default function CreateCrowdfundPage() {
             </div>
             
             <div>
-              <label className="block font-medium mb-2">Goal Amount (sgUSD)</label>
+              <label className="block font-medium mb-2">Goal Amount (SUI)</label>
               <input 
                 type="number" 
                 className="w-full border rounded px-4 py-2"
@@ -217,6 +244,126 @@ export default function CreateCrowdfundPage() {
                 step="0.000000001"
                 required
               />
+              <p className="text-sm text-gray-500 mt-1">Enter the amount in SUI tokens</p>
+            </div>
+
+            <div>
+              <label className="block font-medium mb-2">
+                Beneficial Parties (Optional)
+                <button
+                  type="button"
+                  onClick={() => setShowBeneficialParties(!showBeneficialParties)}
+                  className="ml-2 text-sm text-blue-600 hover:text-blue-800"
+                >
+                  {showBeneficialParties ? "Hide" : "Add"}
+                </button>
+              </label>
+              <p className="text-sm text-gray-500 mb-2">
+                Add parties who will receive a percentage of funds (e.g., service providers, partners)
+              </p>
+              
+              {showBeneficialParties && (
+                <div className="space-y-3 p-4 bg-gray-50 rounded-lg">
+                  {beneficialParties.map((party, index) => (
+                    <div key={index} className="space-y-2 p-3 bg-white rounded border">
+                      <input
+                        type="text"
+                        placeholder="Wallet address (0x...)"
+                        className="w-full border rounded px-3 py-2 text-sm"
+                        value={party.receiver}
+                        onChange={(e) => {
+                          const newParties = [...beneficialParties];
+                          newParties[index].receiver = e.target.value;
+                          setBeneficialParties(newParties);
+                        }}
+                      />
+                      <input
+                        type="text"
+                        placeholder="Notes (e.g., Marketing partner)"
+                        className="w-full border rounded px-3 py-2 text-sm"
+                        value={party.notes}
+                        onChange={(e) => {
+                          const newParties = [...beneficialParties];
+                          newParties[index].notes = e.target.value;
+                          setBeneficialParties(newParties);
+                        }}
+                      />
+                      <div className="grid grid-cols-3 gap-2">
+                        <input
+                          type="number"
+                          placeholder="Percentage"
+                          className="border rounded px-3 py-2 text-sm"
+                          value={party.percentage}
+                          onChange={(e) => {
+                            const newParties = [...beneficialParties];
+                            newParties[index].percentage = e.target.value;
+                            setBeneficialParties(newParties);
+                          }}
+                          min="0.01"
+                          max="100"
+                          step="0.01"
+                        />
+                        <input
+                          type="number"
+                          placeholder="Max amount (SUI)"
+                          className="border rounded px-3 py-2 text-sm"
+                          value={party.maximum_amount}
+                          onChange={(e) => {
+                            const newParties = [...beneficialParties];
+                            newParties[index].maximum_amount = e.target.value;
+                            setBeneficialParties(newParties);
+                          }}
+                          min="0"
+                          step="0.000000001"
+                        />
+                        <input
+                          type="number"
+                          placeholder="Min amount (SUI)"
+                          className="border rounded px-3 py-2 text-sm"
+                          value={party.minimum_amount}
+                          onChange={(e) => {
+                            const newParties = [...beneficialParties];
+                            newParties[index].minimum_amount = e.target.value;
+                            setBeneficialParties(newParties);
+                          }}
+                          min="0"
+                          step="0.000000001"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const newParties = beneficialParties.filter((_, i) => i !== index);
+                          setBeneficialParties(newParties);
+                        }}
+                        className="text-red-600 text-sm hover:text-red-800"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ))}
+                  
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setBeneficialParties([...beneficialParties, {
+                        receiver: "",
+                        notes: "",
+                        percentage: "",
+                        maximum_amount: "",
+                        minimum_amount: ""
+                      }]);
+                    }}
+                    className="w-full py-2 border-2 border-dashed border-gray-300 rounded text-gray-600 hover:border-gray-400"
+                  >
+                    + Add Beneficial Party
+                  </button>
+                  
+                  <div className="text-xs text-gray-500">
+                    Note: Total percentage cannot exceed 100%. Beneficiary receives 6% on successful campaigns.
+                  </div>
+                </div>
+              )}
             </div>
 
             <div>

@@ -41,18 +41,20 @@ export async function createCampaign(
     const tx = new Transaction();
     
     // Get the registry object
-    const registry = tx.object(SUI_CONFIG.REGISTRY_ID);
+    const campaignManager = tx.object(SUI_CONFIG.CAMPAIGN_MANAGER_ID);
     
     tx.moveCall({
       target: `${SUI_CONFIG.PACKAGE_ID}::crowdfunding::create_campaign`,
+      typeArguments: ['0x2::sui::SUI'],
       arguments: [
+        campaignManager,
         tx.pure.string(name),
         tx.pure.string(description),
         tx.pure.string(imageUrl),
+        tx.pure.string(category),
         tx.pure.u64(goalAmount),
         tx.pure.u64(deadline),
-        tx.pure.string(category),
-        registry,
+        tx.splitCoins(tx.gas, [0]), // creation fee coin
       ],
     });
     
@@ -88,10 +90,11 @@ export async function donate(
     
     tx.moveCall({
       target: `${SUI_CONFIG.PACKAGE_ID}::crowdfunding::donate`,
+      typeArguments: ['0x2::sui::SUI'],
       arguments: [
         campaign,
         coin,
-        tx.pure.string(""), // Empty message
+        tx.pure.vector('u8', []), // Empty message as vector<u8>
         tx.pure.bool(isAnonymous),
       ],
     });

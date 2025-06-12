@@ -57,38 +57,21 @@ export async function createCampaign(
   // Create zero SUI coin for creation fee (if no fee is set)
   const creationFeeCoin = tx.splitCoins(tx.gas, [0]);
 
-  if (beneficialParties.length > 0) {
-    // If there are beneficial parties, use create_campaign_with_parties
-    tx.moveCall({
-      target: `${SUI_CONFIG.PACKAGE_ID}::crowdfunding::create_campaign_with_parties<0x2::sui::SUI>`,
-      arguments: [
-        campaignManager,
-        tx.pure.string(name),
-        tx.pure.string(description),
-        tx.pure.string(imageUrl),
-        tx.pure.string(category),
-        tx.pure.u64(goalAmount),
-        tx.pure.u64(deadline),
-        beneficialPartiesVector,
-        creationFeeCoin,
-      ],
-    });
-  } else {
-    // For simple campaigns without beneficial parties, use create_campaign
-    tx.moveCall({
-      target: `${SUI_CONFIG.PACKAGE_ID}::crowdfunding::create_campaign<0x2::sui::SUI>`,
-      arguments: [
-        campaignManager,
-        tx.pure.string(name),
-        tx.pure.string(description),
-        tx.pure.string(imageUrl),
-        tx.pure.string(category),
-        tx.pure.u64(goalAmount),
-        tx.pure.u64(deadline),
-        creationFeeCoin,
-      ],
-    });
-  }
+  // Always use create_campaign with beneficial parties (empty vector if none provided)
+  tx.moveCall({
+    target: `${SUI_CONFIG.PACKAGE_ID}::crowdfunding::create_campaign<0x2::sui::SUI>`,
+    arguments: [
+      campaignManager,
+      tx.pure.string(name),
+      tx.pure.string(description),
+      tx.pure.string(imageUrl),
+      tx.pure.string(category),
+      tx.pure.u64(goalAmount),
+      tx.pure.u64(deadline),
+      beneficialPartiesVector,
+      creationFeeCoin,
+    ],
+  });
   
   return executeTransaction(wallet, tx);
 }

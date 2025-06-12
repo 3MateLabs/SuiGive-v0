@@ -16,7 +16,13 @@ type TransactionOutput = any; // Using any for now as a workaround
  */
 export interface TransactionExecutionHook {
   executeTransaction: (transaction: Transaction) => Promise<any>;
-  createCampaign: (name: string, description: string, imageUrl: string, goalAmount: number, deadline: number, category: string) => Promise<any>;
+  createCampaign: (name: string, description: string, imageUrl: string, goalAmount: number, deadline: number, category: string, beneficialParties?: Array<{
+    receiver: string;
+    notes: string;
+    percentage: number;
+    maximum_amount?: number;
+    minimum_amount?: number;
+  }>) => Promise<any>;
   donate: (campaignId: string, amount: number, isAnonymous?: boolean) => Promise<any>;
   donateSgUSD: (campaignId: string, coinObjectId: string, amount: number, message?: string, isAnonymous?: boolean) => Promise<any>;
   withdrawFunds: (campaignId: string, capabilityId: string) => Promise<any>;
@@ -80,7 +86,14 @@ export function useTransactionExecution(): TransactionExecutionHook {
     imageUrl: string,
     goalAmount: number,
     deadline: number,
-    category: string
+    category: string,
+    beneficialParties: Array<{
+      receiver: string;
+      notes: string;
+      percentage: number;
+      maximum_amount?: number;
+      minimum_amount?: number;
+    }> = []
   ): Promise<TransactionOutput> => {
     console.log('Creating campaign with transaction hook...');
     
@@ -90,25 +103,71 @@ export function useTransactionExecution(): TransactionExecutionHook {
     // Create a new transaction
     const tx = new Transaction();
     
-    // Get the registry object
-    const registry = tx.object(SUI_CONFIG.REGISTRY_ID);
+    // Get the campaign manager object (replaces registry)
+    const campaignManager = tx.object(SUI_CONFIG.CAMPAIGN_MANAGER_ID);
     
     // Set explicit gas budget to avoid automatic budget determination issues
     tx.setGasBudget(10000000);
     
-    // Add the move call to create a campaign
-    tx.moveCall({
-      target: `${SUI_CONFIG.PACKAGE_ID}::crowdfunding::create_campaign`,
-      arguments: [
-        registry,
-        tx.pure.string(name),
-        tx.pure.string(description),
-        tx.pure.string(imageUrl),
-        tx.pure.u64(goalAmount),
-        tx.pure.u64(deadline),
-        tx.pure.string(category),
-      ],
-    });
+    // Create zero SUI coin for creation fee (if no fee is set)
+    const creationFeeCoin = tx.splitCoins(tx.gas, [0]);
+
+    if (beneficialParties.length > 0) {
+      // If there are beneficial parties, use create_campaign_with_parties
+      // Create beneficial party objects
+      const beneficialPartyArgs = beneficialParties.map(party => [
+        tx.pure.address(party.receiver),
+        tx.pure.string(party.notes),
+        tx.pure.u64(party.percentage * 100), // Convert percentage to basis points (1% = 100)
+        tx.pure.u64(party.maximum_amount || 0),
+        tx.pure.u64(party.minimum_amount || 0),
+      ]);
+
+      // Create beneficial parties vector
+      const beneficialPartiesVector = tx.makeMoveVec({
+        elements: beneficialPartyArgs.map(args => 
+          tx.moveCall({
+            target: `${SUI_CONFIG.PACKAGE_ID}::crowdfunding::create_beneficial_party`,
+            arguments: args,
+          })
+        )
+      });
+
+      tx.moveCall({
+        target: `${SUI_CONFIG.PACKAGE_ID}::crowdfunding::create_campaign<0x2::sui::SUI>`,
+        arguments: [
+          campaignManager,
+          tx.pure.string(name),
+          tx.pure.string(description),
+          tx.pure.string(imageUrl),
+          tx.pure.string(category),
+          tx.pure.u64(goalAmount),
+          tx.pure.u64(deadline),
+          beneficialPartiesVector,
+          creationFeeCoin,
+        ],
+      });
+    } else {
+      // For simple campaigns without beneficial parties, create empty vector
+      const emptyBeneficialPartiesVector = tx.makeMoveVec({
+        elements: []
+      });
+      
+      tx.moveCall({
+        target: `${SUI_CONFIG.PACKAGE_ID}::crowdfunding::create_campaign<0x2::sui::SUI>`,
+        arguments: [
+          campaignManager,
+          tx.pure.string(name),
+          tx.pure.string(description),
+          tx.pure.string(imageUrl),
+          tx.pure.string(category),
+          tx.pure.u64(goalAmount),
+          tx.pure.u64(deadline),
+          emptyBeneficialPartiesVector,
+          creationFeeCoin,
+        ],
+      });
+    }
     
     try {
       // Execute the transaction using our helper function
@@ -143,11 +202,11 @@ export function useTransactionExecution(): TransactionExecutionHook {
     
     // Add the move call to donate
     tx.moveCall({
-      target: `${SUI_CONFIG.PACKAGE_ID}::crowdfunding::donate`,
+      target: `${SUI_CONFIG.PACKAGE_ID}::crowdfunding::donate<0x2::sui::SUI>`,
       arguments: [
         campaign,
         coin,
-        tx.pure.string(""),  // Empty message
+        tx.pure.vector('u8', []), // Empty message as vector<u8>
         tx.pure.bool(isAnonymous),
       ],
     });
@@ -182,7 +241,7 @@ export function useTransactionExecution(): TransactionExecutionHook {
     
     // Add the move call to withdraw funds
     tx.moveCall({
-      target: `${SUI_CONFIG.PACKAGE_ID}::crowdfunding::withdraw_funds`,
+      target: `${SUI_CONFIG.PACKAGE_ID}::crowdfunding::withdraw_remaining<0x2::sui::SUI>`,
       arguments: [
         campaign,
         capability,
@@ -241,11 +300,11 @@ export function useTransactionExecution(): TransactionExecutionHook {
       
       // Add the move call to donate with sgUSD using only the split portion
       tx.moveCall({
-        target: `${SUI_CONFIG.PACKAGE_ID}::crowdfunding::donate_sgusd`,
+        target: `${SUI_CONFIG.PACKAGE_ID}::crowdfunding::donate<${SUI_CONFIG.PACKAGE_ID}::sg_usd::SG_USD>`,
         arguments: [
           campaign,
           splitCoin,  // Use the split coin with the exact amount
-          tx.pure.string(message),  // Use the provided message
+          tx.pure.vector('u8', Array.from(new TextEncoder().encode(message))), // Convert message string to vector<u8>
           tx.pure.bool(isAnonymous),
         ],
       });

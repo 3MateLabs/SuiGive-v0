@@ -133,7 +133,13 @@ export function useSuiCampaigns() {
   };
 
   // Create a new campaign
-  const createCampaign = async (name: string, description: string, imageUrl: string, goalAmount: number, deadline: number, category: string) => {
+  const createCampaign = async (name: string, description: string, imageUrl: string, goalAmount: number, deadline: number, category: string, beneficialParties?: Array<{
+    receiver: string;
+    notes: string;
+    percentage: number;
+    maximum_amount?: number;
+    minimum_amount?: number;
+  }>) => {
     const result = await handleContractCall<any>(
       executeCreateCampaign,
       name,
@@ -141,7 +147,8 @@ export function useSuiCampaigns() {
       imageUrl,
       goalAmount,
       deadline,
-      category
+      category,
+      beneficialParties
     );
     
     // Force refresh after campaign creation

@@ -192,11 +192,11 @@ export async function donate(
     const [coin] = tx.splitCoins(tx.gas, [tx.pure.u64(amount)]);
     
     tx.moveCall({
-      target: `${SUI_CONFIG.PACKAGE_ID}::crowdfunding::donate`,
+      target: `${SUI_CONFIG.PACKAGE_ID}::crowdfunding::donate<0x2::sui::SUI>`,
       arguments: [
         campaign,
         coin,
-        tx.pure.string(message),
+        tx.pure.vector('u8', Array.from(new TextEncoder().encode(message))),
         tx.pure.bool(isAnonymous),
       ],
     });
@@ -326,11 +326,11 @@ export async function donateSgUSD(
     tx.setGasBudget(10000000);
     
     tx.moveCall({
-      target: `${SUI_CONFIG.PACKAGE_ID}::crowdfunding::donate_sgusd`,
+      target: `${SUI_CONFIG.PACKAGE_ID}::crowdfunding::donate<${SUI_CONFIG.PACKAGE_ID}::sg_usd::SG_USD>`,
       arguments: [
         campaign,
         sgUSDCoin,
-        tx.pure.string(message),
+        tx.pure.vector('u8', Array.from(new TextEncoder().encode(message))),
         tx.pure.bool(isAnonymous),
       ],
     });

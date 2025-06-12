@@ -47,6 +47,18 @@ export function useTransactionExecution(): TransactionExecutionHook {
     if (!client) throw new Error('SuiClient not available');
     
     try {
+      // Log the transaction for debugging
+      console.log('Transaction to execute:', transaction);
+      try {
+        // Try to access transaction data safely
+        if (transaction && typeof transaction === 'object') {
+          console.log('Transaction type:', transaction.constructor.name);
+          console.log('Transaction keys:', Object.keys(transaction));
+        }
+      } catch (e) {
+        console.log('Could not inspect transaction:', e);
+      }
+      
       // We'll use the default execution flow provided by dapp-kit
       // which is more reliable than our custom implementation
       return await new Promise((resolve, reject) => {
@@ -58,15 +70,20 @@ export function useTransactionExecution(): TransactionExecutionHook {
               console.log('Transaction successful:', result);
               resolve(result);
             },
-            onError: (error) => {
+            onError: (error: any) => {
               console.error('Transaction failed:', error);
+              console.error('Error message:', error?.message);
+              console.error('Error cause:', error?.cause);
+              console.error('Full error object:', JSON.stringify(error, null, 2));
               reject(error);
             }
           }
         );
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Transaction execution error:', error);
+      console.error('Error type:', error?.constructor?.name);
+      console.error('Error message:', error?.message);
       throw error;
     }
   };
@@ -157,8 +174,9 @@ export function useTransactionExecution(): TransactionExecutionHook {
       });
     } else {
       // For simple campaigns without beneficial parties, create empty vector
-      // Using makeMoveVec with empty elements array
+      // Using makeMoveVec with empty elements array and type specification
       const emptyBeneficialPartiesVector = tx.makeMoveVec({
+        type: `${SUI_CONFIG.PACKAGE_ID}::crowdfunding::BeneficialParty`,
         elements: []
       });
       

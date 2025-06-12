@@ -89,6 +89,7 @@ export async function createCampaign(
     
     // Create empty beneficial parties vector since the contract now requires it
     const emptyBeneficialPartiesVector = tx.makeMoveVec({
+      type: `${SUI_CONFIG.PACKAGE_ID}::crowdfunding::BeneficialParty`,
       elements: []
     });
     
@@ -558,7 +559,7 @@ export async function processRefund(
 }
 
 /**
- * Get all campaigns from the registry
+ * Get all campaigns using CampaignCreated events (most reliable approach)
  */
 export async function getAllCampaigns(client: SuiClient): Promise<Campaign[]> {
   // Use the request limiter to prevent too many concurrent requests
@@ -568,244 +569,88 @@ export async function getAllCampaigns(client: SuiClient): Promise<Campaign[]> {
       throw new Error('SuiClient is not initialized');
     }
 
-    // Validate registry ID
-    if (!SUI_CONFIG.REGISTRY_ID) {
-      console.error('Registry ID is not configured');
-      throw new Error('Registry ID is not configured');
+    // Validate package ID
+    if (!SUI_CONFIG.PACKAGE_ID) {
+      console.error('Package ID is not configured');
+      throw new Error('Package ID is not configured');
     }
 
-    // Retry configuration
-    const maxRetries = 3;
-    const initialBackoff = 1000; // 1 second
+    console.log('Fetching campaigns using events approach...');
     
-    let lastError: Error | null = null;
-    
-    // Retry loop
-    for (let attempt = 0; attempt < maxRetries; attempt++) {
-      try {
-        // Calculate exponential backoff delay if this is a retry
-        if (attempt > 0) {
-          const backoffTime = initialBackoff * Math.pow(2, attempt - 1);
-          console.log(`Applying exponential backoff: waiting ${backoffTime/1000} seconds before retry ${attempt + 1}...`);
-          await new Promise(resolve => setTimeout(resolve, backoffTime));
-        }
-
-        console.log(`Fetching registry object (attempt ${attempt + 1}/${maxRetries}):`, SUI_CONFIG.REGISTRY_ID);
-        
-        // First, get the registry object with timeout and monitoring
-        // Use a shorter cache time (30 seconds) optimized for performance while maintaining freshness
-        const fetchRegistryPromise = monitoredApiCall(
-          'getObject/registry',
-          () => client.getObject({
-            id: SUI_CONFIG.REGISTRY_ID,
-            options: { showContent: true, showDisplay: true, showOwner: true }
-          }),
-          0, // No retries yet at this point
-          30000 // 30 second cache time - optimized for performance
-        );
-        
-        // Add timeout to the fetch operation
-        const timeoutPromise = new Promise((_, reject) => {
-          setTimeout(() => reject(new Error('Registry fetch timeout')), 20000); // 20 seconds timeout
-        });
+    try {
+      // Get CampaignCreated events to find all campaigns
+      const events = await client.queryEvents({
+        query: { 
+          MoveEventType: `${SUI_CONFIG.PACKAGE_ID}::crowdfunding::CampaignCreated`
+        },
+        order: 'descending',
+        limit: 50 // Get up to 50 most recent campaigns
+      });
       
-        // Race between fetch and timeout
-        const registry = await Promise.race([fetchRegistryPromise, timeoutPromise]) as any;
-        
-        console.log('Registry response:', JSON.stringify(registry, null, 2));
+      console.log(`Found ${events.data.length} CampaignCreated events`);
       
-        // Extract campaign IDs from registry - handle different potential structures
-        const registryData = registry.data?.content as any;
-        if (!registryData) {
-          console.warn('Registry data not found:', registry);
-          return [];
-        }
-
-        // Try to extract campaigns from registry
-        let campaignIds: string[] = [];
+      if (events.data.length === 0) {
+        console.log('No campaigns found');
+        return [];
+      }
+      
+      // Extract campaign IDs from events and fetch campaign objects
+      const campaigns: Campaign[] = [];
+      
+      for (const event of events.data) {
+        const campaignId = (event.parsedJson as any)?.campaign_id;
+        if (!campaignId) continue;
         
-        // Check for different data structures
-        if (registryData.fields.campaigns && Array.isArray(registryData.fields.campaigns)) {
-          campaignIds = registryData.fields.campaigns;
-        } else if (registryData.fields.campaigns?.fields?.items && Array.isArray(registryData.fields.campaigns.fields.items)) {
-          campaignIds = registryData.fields.campaigns.fields.items;
-        } else if (registryData.fields.campaigns?.fields?.contents && typeof registryData.fields.campaigns.fields.contents === 'object') {
-          // Handle table structure where campaigns are stored as key-value pairs
-          const contents = registryData.fields.campaigns.fields.contents;
-          campaignIds = Object.keys(contents);
-        } else {
-          // Try to find any array field that might contain campaign IDs
-          for (const key in registryData.fields) {
-            const field = registryData.fields[key];
-            // Check if this is a vector or table of campaign IDs
-            if (Array.isArray(field)) {
-              campaignIds = field;
-              break;
-            } else if (field?.fields?.items && Array.isArray(field.fields.items)) {
-              campaignIds = field.fields.items;
-              break;
-            } else if (field?.fields?.contents && typeof field.fields.contents === 'object') {
-              // Handle table structure
-              campaignIds = Object.keys(field.fields.contents);
-              break;
-            }
+        try {
+          // Fetch the campaign object
+          const campaignObj = await client.getObject({
+            id: campaignId,
+            options: { showContent: true, showDisplay: true }
+          });
+          
+          const content = campaignObj.data?.content as any;
+          if (!content?.fields) {
+            console.warn(`Campaign ${campaignId} has no content`);
+            continue;
           }
-        }
-        
-        console.log(`Found ${campaignIds.length} campaigns in registry`);
-        
-        if (campaignIds.length === 0) {
-          return [];
-        }
-        
-        // Fetch details for each campaign with increased concurrency limit for faster loading
-        const concurrencyLimit = 8; // Increased from 2 to 8 for faster loading
-        const results: Campaign[] = [];
-        
-        // Process campaigns in larger batches
-        for (let i = 0; i < campaignIds.length; i += concurrencyLimit) {
-          const batch = campaignIds.slice(i, i + concurrencyLimit);
-          console.log(`Processing batch of ${batch.length} campaigns (${i+1}-${Math.min(i+concurrencyLimit, campaignIds.length)} of ${campaignIds.length})`);
           
-          const batchResults = await Promise.all(
-            batch.map(async (id: string) => {
-              try {
-                // Use monitored API call with minimal cache time for individual campaign objects
-                const campaignObj = await monitoredApiCall(
-                  `getObject/campaign/${id.substring(0, 8)}...`,
-                  () => client.getObject({
-                    id,
-                    options: { showContent: true, showDisplay: true }
-                  }),
-                  0, // No retries at this point
-                  15000 // 15 second cache time - optimized for maximum performance
-                );
-                
-                const campaignData = campaignObj.data?.content as any;
-                if (!campaignData) {
-                  console.warn(`Campaign ${id} data not found`);  
-                  return null;
-                }
-                
-                // Try to extract fields based on different possible structures
-                const fields = campaignData.fields || {};
-                
-
-                
-                // Map field names to account for different naming conventions
-                // Include nested fields with dot notation
-                const fieldMap: Record<string, string[]> = {
-                  name: ['name'],
-                  description: ['description', 'desc'],
-                  imageUrl: ['image_url', 'imageUrl', 'image'],
-                  goalAmount: ['goal_amount', 'goalAmount', 'goal'],
-                  currentAmount: ['current_amount', 'currentAmount', 'raised', 'raised.value', 'raised.fields.value'],
-                  currentAmountSgUSD: ['current_amount_sgusd', 'currentAmountSgUSD', 'raised_sgusd', 'raisedSgUSD', 'sgUSDRaised'],
-                  deadline: ['deadline', 'end_time', 'endTime'],
-                  category: ['category', 'type'],
-                  creator: ['creator', 'owner'],
-                  createdAt: ['created_at', 'createdAt', 'timestamp']
-                };
-                
-                // Helper function to get field value using possible field names
-                // This improved version handles deeply nested fields and different data structures
-                const getFieldValue = (fieldNames: string[]) => {
-                  for (const name of fieldNames) {
-                    // Direct field access
-                    if (fields[name] !== undefined) {
-                      return fields[name];
-                    }
-                    
-                    // Check for nested fields with multiple levels (e.g., raised.fields.value)
-                    if (name.includes('.')) {
-                      const parts = name.split('.');
-                      let current: any = fields;
-                      
-                      // Navigate through the nested structure
-                      for (const part of parts) {
-                        if (!current || typeof current !== 'object') {
-                          current = null;
-                          break;
-                        }
-                        current = current[part];
-                      }
-                      
-                      if (current !== undefined && current !== null) {
-                        return current;
-                      }
-                    }
-                    
-                    // Check for fields in 'fields' property (common in Sui objects)
-                    if (fields.fields && fields.fields[name] !== undefined) {
-                      return fields.fields[name];
-                    }
-                  }
-                  return null;
-                };
-                
-                // Extract campaign data with better error handling
-                const currentAmount = getFieldValue(fieldMap.currentAmount)?.toString() || '0';
-                const currentAmountSgUSD = getFieldValue(fieldMap.currentAmountSgUSD)?.toString() || '0';
-                
-                return {
-                  id,
-                  name: getFieldValue(fieldMap.name) || 'Unnamed Campaign',
-                  description: getFieldValue(fieldMap.description) || 'No description provided',
-                  imageUrl: getFieldValue(fieldMap.imageUrl) || '',
-                  goalAmount: getFieldValue(fieldMap.goalAmount)?.toString() || '0',
-                  currentAmount,
-                  currentAmountSgUSD,
-                  // Add aliases for chart components
-                  raisedSUI: currentAmount,
-                  raisedSgUSD: currentAmountSgUSD,
-                  deadline: getFieldValue(fieldMap.deadline)?.toString() || '0',
-                  category: getFieldValue(fieldMap.category) || 'Uncategorized',
-                  creator: getFieldValue(fieldMap.creator) || 'Unknown',
-                  createdAt: getFieldValue(fieldMap.createdAt)?.toString() || Date.now().toString(),
-                  backerCount: 0 // Default value, will be updated later if available
-                };
-              } catch (error) {
-                console.error(`Error fetching campaign ${id}:`, error);
-                return null;
-              }
-            })
-          );
+          const fields = content.fields;
           
-          // Add valid campaigns from this batch to results
-          results.push(...batchResults.filter(Boolean) as Campaign[]);
+          // Create campaign object with proper field mapping
+          const campaign: Campaign = {
+            id: campaignId,
+            name: fields.name || 'Unknown Campaign',
+            description: fields.description || '',
+            imageUrl: fields.image_url || '/placeholder.svg',
+            goalAmount: fields.goal_amount?.toString() || '0',
+            currentAmount: fields.total_raised?.toString() || '0',
+            currentAmountSgUSD: fields.total_raised?.toString() || '0', // Using same value for now
+            deadline: fields.deadline?.toString() || '0',
+            category: fields.category || 'Other',
+            creator: fields.creator || '',
+            createdAt: event.timestampMs?.toString() || Date.now().toString(),
+            backerCount: parseInt(fields.backer_count?.toString() || '0'),
+            // Aliases for chart component compatibility
+            raisedSUI: fields.total_raised?.toString() || '0',
+            raisedSgUSD: fields.total_raised?.toString() || '0'
+          };
           
-          // Add absolute minimal delay between batches - just enough to prevent rate limiting
-          // Prioritize maximum performance
-          if (i + concurrencyLimit < campaignIds.length) {
-            console.log('Adding micro delay between batches...');
-            await new Promise(resolve => setTimeout(resolve, 50)); // Minimized to 50ms for maximum performance
-          }
-        }
-        
-        console.log(`Successfully fetched ${results.length} campaigns`);
-        return results;
-      } catch (error: any) {
-        lastError = error;
-        const errorMessage = error.message || 'Unknown error';
-        console.error(`Error fetching campaigns (attempt ${attempt + 1}/${maxRetries}):`, errorMessage);
-        
-        // Just log the error and continue to the next iteration
-        if (attempt < maxRetries - 1) {
-          console.log(`Will retry with exponential backoff...`);
+          campaigns.push(campaign);
+          console.log(`✅ Loaded campaign: ${campaign.name}`);
+          
+        } catch (error) {
+          console.error(`Error fetching campaign ${campaignId}:`, error);
+          // Continue with other campaigns even if one fails
         }
       }
+      
+      console.log(`Successfully loaded ${campaigns.length} campaigns`);
+      return campaigns;
+      
+    } catch (error) {
+      console.error('Error fetching campaigns via events:', error);
+      throw error;
     }
-    
-    // If we've exhausted all retries, throw the last error
-    const errorMessage = lastError?.message || 'Unknown error';
-    const errorDetails = {
-      message: errorMessage,
-      stack: lastError?.stack,
-      name: lastError?.name,
-      registryId: SUI_CONFIG.REGISTRY_ID
-    };
-    console.error('All retry attempts failed. Error details:', errorDetails);
-    throw new Error(`Failed to fetch campaigns after ${maxRetries} attempts: ${errorMessage}`);
   });
 }
 

@@ -100,7 +100,7 @@ export async function donate(
     arguments: [
       campaign,
       coin,
-      tx.pure([], 'vector<u8>'), // Empty message as vector<u8>
+      tx.pure.vector('u8', []), // Empty message as vector<u8>
       tx.pure.bool(isAnonymous),
     ],
   });
